@@ -1,6 +1,22 @@
+## Passo a passo desde clonagem do repositório até execução do frontend:
+### ABra o terminal e digite os comandos abaixo:
+```bash
+git clone -b Develop https://github.com/marceloareas/gestaoTI.git
+```
+cd .\gestaoTI\
+cd .\frontend\
+npm i
+npm run dev
+
+
+
 ## 🚩 Início do desenvolvimento
 
-As **dependências primordiais**:
+
+
+
+
+Sgutestões de **dependências primordiais**:
 
 -   `React Router Dom` para o roteamento
 -   `Iconify` para os ícones
