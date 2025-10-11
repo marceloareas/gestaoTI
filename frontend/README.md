@@ -3,11 +3,22 @@
 ```bash
 git clone -b Develop https://github.com/marceloareas/gestaoTI.git
 ```
-cd .\gestaoTI\
-cd .\frontend\
-npm i
-npm run dev
 
+```bash
+cd .\gestaoTI\
+```
+
+```bash
+cd .\frontend\
+```
+
+```bash
+npm i
+```
+
+```bash
+npm run dev
+```
 
 
 ## 🚩 Início do desenvolvimento
