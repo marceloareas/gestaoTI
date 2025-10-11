@@ -5,10 +5,7 @@ export default function Footer() {
 	return (
 		<StyledFooter>
 			<p id="copy">
-				Desenvolvido com muito ❤ e ☕ por{" "}
-				<a href="https://ilrocha.com" target="_blank">
-					Igor Rocha
-				</a>
+				Desenvolvido com muito (❁´◡`❁)
 			</p>
 		</StyledFooter>
 	)

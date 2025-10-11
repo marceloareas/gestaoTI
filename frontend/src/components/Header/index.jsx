@@ -5,7 +5,7 @@ export default function Header() {
 	return (
 		<StyledHeader>
 			<div className="headerContent">
-				<p>Header</p>
+				<p>TechManager</p>
 				<nav className="links">
 					<a href="/">Home</a>
 					<a href="/login">Login</a>
