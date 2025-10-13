@@ -1,0 +1,27 @@
+version: '0.1'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: techManager_postgres
+    environment:
+      POSTGRES_DB: techManager
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: senha1234
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db-data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:latest
+    container_name: techManager_adminer
+    depends_on:
+      - postgres
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - "9080:8080"
+    restart: unless-stopped
