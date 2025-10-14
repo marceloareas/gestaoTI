@@ -46,7 +46,7 @@ Com isso, o projeto estará pronto para ser desenvolvido.
 npm run dev
 ```
 
-
+```
 │    │    ├── 📁 Header
 │    │    │    ├── index.jsx
 │    │    │    └── styles.js
@@ -100,5 +100,18 @@ Existem diversas formas de organizar os componentes. A forma com a qual eu me ad
       └── style.js
 ```
 
-## subir docker(no momento só banco e adminer)
+## Subir docker(no momento só banco e adminer)
+
+```bash
 docker compose up -d
+```
+
+## Rodar banco de dados
+
+```bash
+cd backend
+```
+
+```bash
+./mvnw spring-boot:run
+```
