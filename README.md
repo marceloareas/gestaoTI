@@ -46,7 +46,7 @@ Com isso, o projeto estará pronto para ser desenvolvido.
 npm run dev
 ```
 
-
+```
 │    │    ├── 📁 Header
 │    │    │    ├── index.jsx
 │    │    │    └── styles.js
