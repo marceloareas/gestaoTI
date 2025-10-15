@@ -100,18 +100,15 @@ Existem diversas formas de organizar os componentes. A forma com a qual eu me ad
       └── style.js
 ```
 
-## Subir docker(no momento só banco e adminer)
+## Subir docker(banco, adminer e back)
+```bash
+cd infra
+```
+
+```bash
+docker compose build backend
+```
 
 ```bash
 docker compose up -d
-```
-
-## Rodar banco de dados
-
-```bash
-cd backend
-```
-
-```bash
-./mvnw spring-boot:run
 ```
