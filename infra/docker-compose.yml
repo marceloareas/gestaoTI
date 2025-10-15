@@ -1,5 +1,4 @@
-version: '0.1'
-
+version: "3.8"
 services:
   postgres:
     image: postgres:15
@@ -18,10 +17,23 @@ services:
   adminer:
     image: adminer:latest
     container_name: techManager_adminer
-    depends_on:
-      - postgres
+    depends_on: [postgres]
     environment:
       ADMINER_DEFAULT_SERVER: postgres
     ports:
       - "9080:8080"
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: techManager_backend
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
     restart: unless-stopped
