@@ -1,0 +1,34 @@
+[
+  {
+    "modelo": "Dell Latitude 5410",
+    "numero_serie": "ABC123",
+    "tipo_equipamento": "notebook",
+    "data_fim_garantia": "2024-12-31",
+    "preco_compra": 4000.00,
+    "data_compra": "2022-01-15"
+  },
+  {
+    "modelo": "Logitech H390",
+    "numero_serie": "XYZ789",
+    "tipo_equipamento": "fone",
+    "data_fim_garantia": "2023-05-20",
+    "preco_compra": 350.00,
+    "data_compra": "2021-05-12"
+  },
+  {
+    "modelo": "Logitech H390",
+    "numero_serie": "XYZ789",
+    "tipo_equipamento": "fone",
+    "data_fim_garantia": "2023-05-20",
+    "preco_compra": 350.00,
+    "data_compra": "2021-05-12"
+  },
+  {
+    "modelo": "Logitech H400",
+    "numero_serie": "XYZ789",
+    "tipo_equipamento": "fone",
+    "data_fim_garantia": "2026-05-20",
+    "preco_compra": 350.00,
+    "data_compra": "2021-05-12"
+  }
+]
