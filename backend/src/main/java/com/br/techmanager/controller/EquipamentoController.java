@@ -16,7 +16,10 @@ public class EquipamentoController {
     private final EquipamentoService service;
 
     @GetMapping
-    public List<EquipamentoResponse> listar() { return service.listar(); }
+    public List<EquipamentoListItem> listarResumo() {
+        return service.listarResumo();
+    }
+
 
     @PostMapping
     public ResponseEntity<EquipamentoResponse> criar(@Valid @RequestBody EquipamentoRequest req) {

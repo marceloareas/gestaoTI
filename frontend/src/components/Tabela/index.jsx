@@ -1,4 +1,4 @@
-import * as React from 'react';
+import  React, { useEffect, useState }  from 'react';
 import { styled } from '@mui/material/styles';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -14,46 +14,7 @@ import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import SearchIcon from '@mui/icons-material/Search'; // Importado ícone de pesquisa
 import InputAdornment from '@mui/material/InputAdornment'; // Importado para colocar o ícone no input
 
-
-const DADOS_EQUIPAMENTOS_INICIAIS = [
-    // Seus dados...
-    {
-        id: 1,
-        numero_serie: "EQP-2025-001",
-        modelo_equipamento_id: 3,
-        categoria_id: 1,
-        data_compra: "2023-06-15",
-        data_fim_garantia: "2025-06-15",
-        preco_compra: 4599.99,
-        observacoes: "Equipamento em bom estado",
-        data_criacao: "2023-06-15 10:23:00",
-        status: "Em uso"
-    },
-    {
-        id: 2,
-        numero_serie: "EQP-2025-002",
-        modelo_equipamento_id: 2,
-        categoria_id: 2,
-        data_compra: "2022-01-10",
-        data_fim_garantia: "2024-01-10",
-        preco_compra: 2899.50,
-        observacoes: "Com pequenos arranhões",
-        data_criacao: "2022-01-11 09:12:00",
-        status: "Em uso"
-    },
-    {
-        id: 3,
-        numero_serie: "EQP-2025-003",
-        modelo_equipamento_id: 5,
-        categoria_id: 3,
-        data_compra: "2021-12-20",
-        data_fim_garantia: "2023-12-20",
-        preco_compra: 699.00,
-        observacoes: "Apresentou problemas na primeira semana de uso",
-        data_criacao: "2021-12-21 14:45:00",
-        status: "Em estoque"
-    },
-];
+import { api } from "@/services/api"
 
 // ... (StyledTableCellAction, StyledTableCell, StyledTableRow) - Manter inalterado
 
@@ -86,24 +47,31 @@ const StyledTableCellAction = styled(TableCell)(({ theme }) => ({
 
 
 export default function TabelaEquipamentos() {
-    const [equipamentos] = React.useState(DADOS_EQUIPAMENTOS_INICIAIS);
+    const [data, setData] = useState([]);
+
+    useEffect(() => {
+        api.get("/equipamentos")
+          .then((r) => setData(r.data))
+          .catch((e) => setErr(e?.message || "Erro ao buscar equipamentos"))
+      }, []);
     // 1. Novo estado para o termo de pesquisa
     const [searchTerm, setSearchTerm] = React.useState('');
 
     // 2. Lógica de Filtragem
-    const equipamentosFiltrados = equipamentos.filter(eq =>
-        eq.numero_serie.toLowerCase().includes(searchTerm.toLowerCase())
+    const equipamentosFiltrados = data.filter(eq =>
+        eq.numeroSerie.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const handleDetalhes = (equipamento) => {
-        alert(`Detalhes do equipamento ${equipamento.numero_serie}`);
+    const handleDetalhes = (data) => {
+        alert(`Detalhes do equipamento ${data.numeroSerie}`);
     };
 
-    const handleExcluir = (equipamento) => {
-        alert(`Deseja excluir equipamento com o número de série ${equipamento.numero_serie} ?`);
+    const handleExcluir = (data) => {
+        alert(`Deseja excluir equipamento com o número de série ${data.numeroSerie} ?`);
     };
 
     return (
+            
         <TableContainer component={Paper}>
                   <Button variant="outlined" size="large" sx={{ margin: 2, width: 300 }}>
                   Adicionar equipamento
@@ -132,12 +100,13 @@ export default function TabelaEquipamentos() {
                 <TableHead backgroundColor>
                     <TableRow>
                         <StyledTableCell>Identificador</StyledTableCell>
-                        <StyledTableCell> Marca (ID)</StyledTableCell>
-                        <StyledTableCell> Categoria (ID)</StyledTableCell>
+                        <StyledTableCell> Marca </StyledTableCell>
+                        <StyledTableCell> Modelo </StyledTableCell>
+                        <StyledTableCell> Categoria </StyledTableCell>
                         <StyledTableCell>Fim da Garantia</StyledTableCell>
                         <StyledTableCell align="right">Preço de Compra</StyledTableCell>
                         <StyledTableCell>Observações</StyledTableCell>
-                        <StyledTableCell>Data de Criação</StyledTableCell>
+                        <StyledTableCell>Data de Compra</StyledTableCell>
                         <StyledTableCell align="center">Status</StyledTableCell>
                         <StyledTableCell align="center">Ações</StyledTableCell>
                     </TableRow>
@@ -147,15 +116,16 @@ export default function TabelaEquipamentos() {
                     {/* USANDO O ARRAY FILTRADO */}
                     {equipamentosFiltrados.map((eq) => (
                         <StyledTableRow key={eq.id}>
-                            <StyledTableCell>{eq.numero_serie}</StyledTableCell>
-                            <StyledTableCell>{eq.modelo_equipamento_id}</StyledTableCell>
-                            <StyledTableCell>{eq.categoria_id}</StyledTableCell>
-                            <StyledTableCell>{new Date(eq.data_fim_garantia).toLocaleDateString('pt-BR')}</StyledTableCell>
+                            <StyledTableCell>{eq.numeroSerie}</StyledTableCell>
+                            <StyledTableCell>{eq.marca}</StyledTableCell>
+                            <StyledTableCell>{eq.modelo}</StyledTableCell>
+                            <StyledTableCell>{eq.categoria}</StyledTableCell>
+                            <StyledTableCell>{new Date(eq.dataFimGarantia).toLocaleDateString('pt-BR')}</StyledTableCell>
                             <StyledTableCell align="right">
-                                {eq.preco_compra.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                {eq.precoCompra.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </StyledTableCell>
                             <StyledTableCell>{eq.observacoes}</StyledTableCell>
-                            <StyledTableCell>{new Date(eq.data_criacao).toLocaleString('pt-BR')}</StyledTableCell>
+                            <StyledTableCell>{new Date(eq.dataCompra).toLocaleString('pt-BR')}</StyledTableCell>
                             
                             {/* Célula de Status (Ajustada para o seu requisito de 'menor que small' com string status) */}
                             <StyledTableCell align="center">

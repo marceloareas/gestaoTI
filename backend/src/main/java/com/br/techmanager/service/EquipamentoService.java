@@ -13,8 +13,8 @@ import java.util.List;
 public class EquipamentoService {
     private final EquipamentoRepository repo;
 
-    public List<EquipamentoResponse> listar() {
-        return repo.findAll().stream().map(this::toResponse).toList();
+    public List<EquipamentoListItem> listarResumo() {
+        return repo.listarResumo();
     }
 
     public EquipamentoResponse criar(EquipamentoRequest req) {
