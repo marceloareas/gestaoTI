@@ -39,29 +39,34 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
 }));
 
 const StyledTableRow = styled(TableRow)(({ theme }) => ({
-  '&:nth-of-type(odd)': {
-    backgroundColor: theme.palette.action.hover,
-  },
+  '&:nth-of-type(odd)': { backgroundColor: theme.palette.action.hover },
   '&:last-child td, &:last-child th': { border: 0 },
 }));
 
 export default function TabelaEquipamentos() {
   const [data, setData] = useState([]);
 
-  // estados auxiliares para requisição inicial (evitar erros)
+  // estados auxiliares
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
 
-  // --- ESTADOS DOS MODAIS ---
+  // --- MODAIS adicionar/editar/excluir ---
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
-  const [selectedEq, setSelectedEq] = useState(null);
+  const [openDelete, setOpenDelete] = useState(false);
 
-  // formulários (simples) para os modais
+  const [selectedEq, setSelectedEq] = useState(null);
+  const [eqToDelete, setEqToDelete] = useState(null);
+
+  // formulários
   const [formAdd, setFormAdd] = useState({
-    numero_serie: '',
-    marca: '',
-    modelo: ''
+    numeroSerie: '',
+    modeloEquipamentoId: '',
+    categoriaId: '',
+    dataCompra: '',
+    dataFimGarantia: '',
+    precoCompra: '',
+    observacoes: '',
   });
   const [formEdit, setFormEdit] = useState({
     numero_serie: '',
@@ -69,8 +74,10 @@ export default function TabelaEquipamentos() {
     modelo: ''
   });
 
-  // loading do submit de edição
+  // loadings de ações
   const [savingEdit, setSavingEdit] = useState(false);
+  const [savingAdd, setSavingAdd] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     api.get("/equipamentos")
@@ -87,18 +94,16 @@ export default function TabelaEquipamentos() {
     (eq.numeroSerie ?? '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const buildEquipamentoPayload = (orig, form) => {
-    return {
-      numeroSerie: form.numero_serie ?? orig.numeroSerie,
-      // manter valores atuais, se existirem
-      dataCompra: orig.dataCompra ?? null,
-      dataFimGarantia: orig.dataFimGarantia ?? null,
-      precoCompra: orig.precoCompra ?? null,
-      observacoes: orig.observacoes ?? null,
-      ...(orig.modeloEquipamentoId != null && { modeloEquipamentoId: orig.modeloEquipamentoId }),
-      ...(orig.categoriaId != null && { categoriaId: orig.categoriaId }),
-    };
-  };
+  // payload p/ editar
+  const buildEquipamentoPayload = (orig, form) => ({
+    numeroSerie: form.numero_serie ?? orig.numeroSerie,
+    dataCompra: orig.dataCompra ?? null,
+    dataFimGarantia: orig.dataFimGarantia ?? null,
+    precoCompra: orig.precoCompra ?? null,
+    observacoes: orig.observacoes ?? null,
+    ...(orig.modeloEquipamentoId != null && { modeloEquipamentoId: orig.modeloEquipamentoId }),
+    ...(orig.categoriaId != null && { categoriaId: orig.categoriaId }),
+  });
 
   // EDITAR: abre modal e carrega dados no form
   const handleDetalhes = (eq) => {
@@ -111,22 +116,91 @@ export default function TabelaEquipamentos() {
     setOpenEdit(true);
   };
 
+  // EXCLUIR: abre modal confirmação
   const handleExcluir = (eq) => {
-    alert(`Deseja excluir equipamento com o número de série ${eq.numeroSerie} ?`);
+    setEqToDelete(eq);
+    setOpenDelete(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!eqToDelete) return;
+    try {
+      setDeleting(true);
+      await api.delete(`/equipamentos/${eqToDelete.id}`);
+      setData(list => list.filter(item => item.id !== eqToDelete.id));
+      setOpenDelete(false);
+      setEqToDelete(null);
+    } catch (e) {
+      console.error("Falha ao excluir equipamento:", e);
+      alert("Não foi possível excluir o equipamento.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const cancelDelete = () => {
+    setOpenDelete(false);
+    setEqToDelete(null);
   };
 
   // Adicionar
-  const handleOpenAdd = () => setOpenAdd(true);
+  const handleOpenAdd = () => {
+    setFormAdd({
+      numeroSerie: '',
+      modeloEquipamentoId: '',
+      categoriaId: '',
+      dataCompra: '',
+      dataFimGarantia: '',
+      precoCompra: '',
+      observacoes: '',
+    });
+    setOpenAdd(true);
+  };
   const handleCloseAdd = () => setOpenAdd(false);
 
   // Editar
   const handleCloseEdit = () => setOpenEdit(false);
 
-  // SUBMIT: ADICIONAR (sem integração ainda)
-  const handleSubmitAdd = (e) => {
+  // SUBMIT: ADICIONAR (integrado ao backend)
+  const handleSubmitAdd = async (e) => {
     e.preventDefault();
-    console.log('Adicionar:', formAdd);
-    setOpenAdd(false);
+
+    // monta payload no formato exato esperado
+    const payload = {
+      numeroSerie: String(formAdd.numeroSerie || '').trim(),
+      modeloEquipamentoId: formAdd.modeloEquipamentoId ? Number(formAdd.modeloEquipamentoId) : null,
+      categoriaId: formAdd.categoriaId ? Number(formAdd.categoriaId) : null,
+      dataCompra: formAdd.dataCompra || null,
+      dataFimGarantia: formAdd.dataFimGarantia || null,
+      precoCompra: formAdd.precoCompra !== '' ? Number(formAdd.precoCompra) : null,
+      observacoes: formAdd.observacoes || null,
+    };
+
+    // validação simples
+    if (!payload.numeroSerie) {
+      alert("Informe o número de série.");
+      return;
+    }
+    if (!payload.modeloEquipamentoId || !payload.categoriaId) {
+      alert("Informe modeloEquipamentoId e categoriaId (IDs válidos).");
+      return;
+    }
+
+    try {
+      setSavingAdd(true);
+      await api.post("/equipamentos", payload);
+
+      // recarrega a lista para refletir joins (marca/modelo/categoria/status)
+      const r = await api.get("/equipamentos");
+      setData(r.data);
+
+      setOpenAdd(false);
+    } catch (e) {
+      console.error("Falha ao criar equipamento:", e);
+      alert("Não foi possível criar o equipamento.");
+    } finally {
+      setSavingAdd(false);
+    }
   };
 
   // SUBMIT: EDITAR (integrado ao backend)
@@ -136,13 +210,11 @@ export default function TabelaEquipamentos() {
 
     try {
       setSavingEdit(true);
-
       const id = selectedEq.id;
       const payload = buildEquipamentoPayload(selectedEq, formEdit);
-
       await api.put(`/equipamentos/${id}`, payload);
 
-      // Atualiza linha em memória 
+      // atualiza visualmente (para numeroSerie)
       setData((list) =>
         list.map((it) =>
           it.id === id
@@ -215,37 +287,25 @@ export default function TabelaEquipamentos() {
                 <StyledTableCell>{eq.categoria}</StyledTableCell>
                 <StyledTableCell>{new Date(eq.dataFimGarantia).toLocaleDateString('pt-BR')}</StyledTableCell>
                 <StyledTableCell align="right">
-                  {eq.precoCompra.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  {Number(eq.precoCompra ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </StyledTableCell>
                 <StyledTableCell>{eq.observacoes}</StyledTableCell>
                 <StyledTableCell>{new Date(eq.dataCompra).toLocaleString('pt-BR')}</StyledTableCell>
 
                 <StyledTableCell align="center">
                   {eq.status === "Em estoque" ? (
-                    <Button
-                      variant="contained"
-                      color="success"
-                      size="small"
-                      sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 0, height: 20 }}
-                    >
+                    <Button variant="contained" color="success" size="small"
+                      sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 0, height: 20 }}>
                       Em Estoque
                     </Button>
                   ) : eq.status === "Em uso" ? (
-                    <Button
-                      variant="contained"
-                      color="error"
-                      size="small"
-                      sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 0, height: 20 }}
-                    >
+                    <Button variant="contained" color="error" size="small"
+                      sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 0, height: 20 }}>
                       Em Uso
                     </Button>
                   ) : (
-                    <Button
-                      variant="contained"
-                      color="warning"
-                      size="small"
-                      sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 0, height: 20 }}
-                    >
+                    <Button variant="contained" color="warning" size="small"
+                      sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 0, height: 20 }}>
                       {eq.status || 'Outro Status'}
                     </Button>
                   )}
@@ -281,23 +341,14 @@ export default function TabelaEquipamentos() {
         onClose={handleCloseAdd}
         aria-labelledby="modal-add"
         slotProps={{
-          backdrop: {
-            sx: { backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' }
-          }
+          backdrop: { sx: { backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' } }
         }}
       >
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '50%', left: '50%',
-            transform: 'translate(-50%, -50%)',
-            bgcolor: '#fff',
-            p: 3,
-            borderRadius: 2,
-            boxShadow: 24,
-            width: 420,
-          }}
-        >
+        <Box sx={{
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          bgcolor: '#fff', p: 3, borderRadius: 2, boxShadow: 24, width: 480
+        }}>
           <Typography id="modal-add" variant="h6" gutterBottom>
             Adicionar Equipamento
           </Typography>
@@ -305,32 +356,67 @@ export default function TabelaEquipamentos() {
           <form onSubmit={handleSubmitAdd}>
             <TextField
               label="Número de Série"
-              fullWidth
-              size="small"
-              margin="dense"
-              value={formAdd.numero_serie}
-              onChange={(e) => setFormAdd(v => ({ ...v, numero_serie: e.target.value }))}
+              fullWidth size="small" margin="dense"
+              value={formAdd.numeroSerie}
+              onChange={(e) => setFormAdd(v => ({ ...v, numeroSerie: e.target.value }))}
             />
+
             <TextField
-              label="Marca"
-              fullWidth
-              size="small"
-              margin="dense"
-              value={formAdd.marca}
-              onChange={(e) => setFormAdd(v => ({ ...v, marca: e.target.value }))}
+              label="Modelo Equipamento ID"
+              type="number"
+              fullWidth size="small" margin="dense"
+              value={formAdd.modeloEquipamentoId}
+              onChange={(e) => setFormAdd(v => ({ ...v, modeloEquipamentoId: e.target.value }))}
+              helperText="ID do modelo (ex.: 2)"
             />
+
             <TextField
-              label="Modelo"
-              fullWidth
-              size="small"
-              margin="dense"
-              value={formAdd.modelo}
-              onChange={(e) => setFormAdd(v => ({ ...v, modelo: e.target.value }))}
+              label="Categoria ID"
+              type="number"
+              fullWidth size="small" margin="dense"
+              value={formAdd.categoriaId}
+              onChange={(e) => setFormAdd(v => ({ ...v, categoriaId: e.target.value }))}
+              helperText="ID da categoria (ex.: 2)"
+            />
+
+            <TextField
+              label="Data de Compra"
+              type="date"
+              fullWidth size="small" margin="dense"
+              value={formAdd.dataCompra}
+              onChange={(e) => setFormAdd(v => ({ ...v, dataCompra: e.target.value }))}
+              InputLabelProps={{ shrink: true }}
+            />
+
+            <TextField
+              label="Data Fim Garantia"
+              type="date"
+              fullWidth size="small" margin="dense"
+              value={formAdd.dataFimGarantia}
+              onChange={(e) => setFormAdd(v => ({ ...v, dataFimGarantia: e.target.value }))}
+              InputLabelProps={{ shrink: true }}
+            />
+
+            <TextField
+              label="Preço de Compra"
+              type="number" inputProps={{ step: "0.01" }}
+              fullWidth size="small" margin="dense"
+              value={formAdd.precoCompra}
+              onChange={(e) => setFormAdd(v => ({ ...v, precoCompra: e.target.value }))}
+            />
+
+            <TextField
+              label="Observações"
+              fullWidth size="small" margin="dense" multiline minRows={2}
+              value={formAdd.observacoes}
+              onChange={(e) => setFormAdd(v => ({ ...v, observacoes: e.target.value }))}
             />
 
             <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mt: 2 }}>
               <Button onClick={handleCloseAdd}>Cancelar</Button>
-              <Button type="submit" variant="contained">Salvar</Button>
+              <Button type="submit" variant="contained" disabled={savingAdd}>
+                {savingAdd ? "Salvando..." : "Salvar"}
+              </Button>
             </Box>
           </form>
         </Box>
@@ -342,23 +428,14 @@ export default function TabelaEquipamentos() {
         onClose={handleCloseEdit}
         aria-labelledby="modal-edit"
         slotProps={{
-          backdrop: {
-            sx: { backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' }
-          }
+          backdrop: { sx: { backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' } }
         }}
       >
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '50%', left: '50%',
-            transform: 'translate(-50%, -50%)',
-            bgcolor: '#fff',
-            p: 3,
-            borderRadius: 2,
-            boxShadow: 24,
-            width: 420,
-          }}
-        >
+        <Box sx={{
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          bgcolor: '#fff', p: 3, borderRadius: 2, boxShadow: 24, width: 420
+        }}>
           <Typography id="modal-edit" variant="h6" gutterBottom>
             Editar Equipamento
           </Typography>
@@ -366,25 +443,19 @@ export default function TabelaEquipamentos() {
           <form onSubmit={handleSubmitEdit}>
             <TextField
               label="Número de Série"
-              fullWidth
-              size="small"
-              margin="dense"
+              fullWidth size="small" margin="dense"
               value={formEdit.numero_serie}
               onChange={(e) => setFormEdit(v => ({ ...v, numero_serie: e.target.value }))}
             />
             <TextField
               label="Marca"
-              fullWidth
-              size="small"
-              margin="dense"
+              fullWidth size="small" margin="dense"
               value={formEdit.marca}
               onChange={(e) => setFormEdit(v => ({ ...v, marca: e.target.value }))}
             />
             <TextField
               label="Modelo"
-              fullWidth
-              size="small"
-              margin="dense"
+              fullWidth size="small" margin="dense"
               value={formEdit.modelo}
               onChange={(e) => setFormEdit(v => ({ ...v, modelo: e.target.value }))}
             />
@@ -396,6 +467,37 @@ export default function TabelaEquipamentos() {
               </Button>
             </Box>
           </form>
+        </Box>
+      </Modal>
+
+      {/* MODAL: CONFIRMAR EXCLUSÃO */}
+      <Modal
+        open={openDelete}
+        onClose={cancelDelete}
+        aria-labelledby="modal-delete"
+        slotProps={{
+          backdrop: { sx: { backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' } }
+        }}
+      >
+        <Box sx={{
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          bgcolor: '#fff', p: 3, borderRadius: 2, boxShadow: 24, width: 420
+        }}>
+          <Typography id="modal-delete" variant="h6" gutterBottom>
+            Confirmar exclusão
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Tem certeza que deseja excluir o equipamento{" "}
+            <strong>{eqToDelete?.numeroSerie}</strong>?
+          </Typography>
+
+          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+            <Button onClick={cancelDelete}>Cancelar</Button>
+            <Button variant="contained" color="error" onClick={confirmDelete} disabled={deleting}>
+              {deleting ? "Excluindo..." : "Excluir"}
+            </Button>
+          </Box>
         </Box>
       </Modal>
     </>
