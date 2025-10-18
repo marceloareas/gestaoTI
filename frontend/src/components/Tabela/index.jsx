@@ -8,25 +8,16 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import { Button, TextField } from '@mui/material';
-import InfoIcon from '@mui/icons-material/Info';
 import ModeEditOutlineRoundedIcon from '@mui/icons-material/ModeEditOutlineRounded';
-import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import SearchIcon from '@mui/icons-material/Search';
 import InputAdornment from '@mui/material/InputAdornment';
 import { Modal, Box, Typography } from '@mui/material';
+import Pagination from '@mui/material/Pagination';
+
 
 import { api } from "@/services/api";
 
-// ... (StyledTableCellAction, StyledTableCell, StyledTableRow) - Mantidos
-
-const StyledTableCellAction = styled(TableCell)(({ theme }) => ({
-  textAlign: 'center',
-  display: 'flex',
-  justifyContent: 'center',
-  gap: '10px',
-  alignItems: 'center',
-}));
-
+// ... (StyledTableCell, StyledTableRow) - Mantidos
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   [`&.${tableCellClasses.head}`]: {
     backgroundColor: theme.palette.grey[900],
@@ -79,6 +70,10 @@ export default function TabelaEquipamentos() {
   const [savingAdd, setSavingAdd] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 5;
+
+
   useEffect(() => {
     api.get("/equipamentos")
       .then((r) => setData(r.data))
@@ -91,6 +86,7 @@ export default function TabelaEquipamentos() {
 
   // filtragem
   const equipamentosFiltrados = data.filter(eq =>
+    eq.status !== "Descartado" &&
     (eq.numeroSerie ?? '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -237,6 +233,11 @@ export default function TabelaEquipamentos() {
     }
   };
 
+  const startIndex = (page - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const equipamentosPaginados = equipamentosFiltrados.slice(startIndex, endIndex);
+
+
   return (
     <>
       <TableContainer component={Paper}>
@@ -279,7 +280,7 @@ export default function TabelaEquipamentos() {
           </TableHead>
 
           <TableBody>
-            {equipamentosFiltrados.map((eq) => (
+            {equipamentosPaginados.map((eq) => (
               <StyledTableRow key={eq.id}>
                 <StyledTableCell>{eq.numeroSerie}</StyledTableCell>
                 <StyledTableCell>{eq.marca}</StyledTableCell>
@@ -295,32 +296,28 @@ export default function TabelaEquipamentos() {
                 <StyledTableCell align="center">
                   {eq.status === "Em estoque" ? (
                     <Button variant="contained" color="success" size="small"
-                      sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 0, height: 20 }}>
+                      sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 'fit-content', height: 30, pointerEvents: 'none' }}>
                       Em Estoque
                     </Button>
                   ) : eq.status === "Em uso" ? (
                     <Button variant="contained" color="error" size="small"
-                      sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 0, height: 20 }}>
+                      sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 'fit-content', height: 30, pointerEvents: 'none' }}>
                       Em Uso
                     </Button>
                   ) : (
                     <Button variant="contained" color="warning" size="small"
-                      sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 0, height: 20 }}>
+                      sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 0, height: 30, pointerEvents: 'none' }}>
                       {eq.status || 'Outro Status'}
                     </Button>
                   )}
                 </StyledTableCell>
 
-                <StyledTableCellAction align="center">
+                <StyledTableCell align="center">
                   <ModeEditOutlineRoundedIcon
                     onClick={() => handleDetalhes(eq)}
                     style={{ cursor: 'pointer' }}
                   />
-                  <DeleteRoundedIcon
-                    onClick={() => handleExcluir(eq)}
-                    style={{ cursor: 'pointer' }}
-                  />
-                </StyledTableCellAction>
+                </StyledTableCell>
               </StyledTableRow>
             ))}
 
@@ -334,6 +331,15 @@ export default function TabelaEquipamentos() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+        <Pagination
+          count={Math.ceil(equipamentosFiltrados.length / rowsPerPage)}
+          page={page}
+          onChange={(e, value) => setPage(value)}
+          color="primary"
+        />
+      </Box>
 
       {/* MODAL: ADICIONAR */}
       <Modal
