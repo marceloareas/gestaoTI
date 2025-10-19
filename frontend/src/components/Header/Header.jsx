@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { StyledHeader, Sidebar } from "./styles";
 import { Link } from 'react-router-dom';
 import Logo from "../../assets/imagens/logo.png";
-import { Menu, Home, Package, Clock, Users, BadgeCheck } from "lucide-react";
+import { Menu, Home, Package, Clock, Users, BadgeCheck, Recycle } from "lucide-react";
 
 
 export default function Header() {
@@ -38,6 +38,7 @@ export default function Header() {
         <a href="/historico"><Clock size={18}/> Histórico</a>
         <a href="/funcionarios"><Users size={18}/> Funcionários</a>
         <a href="/garantias"><BadgeCheck size={18}/> Garantias</a>
+        <a href="/itensDescartados"> <Recycle size={18} /> Descartados </a>
       </Sidebar>
     </>
   );
