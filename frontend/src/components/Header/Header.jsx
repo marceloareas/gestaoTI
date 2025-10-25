@@ -38,6 +38,7 @@ export default function Header() {
         <a href="/historico"><Clock size={18}/> Histórico</a>
         <a href="/funcionarios"><Users size={18}/> Funcionários</a>
         <a href="/garantias"><BadgeCheck size={18}/> Garantias</a>
+        <a href="/foraGarantia"><BadgeCheck size={18}/> Fora de Garantia</a>
         <a href="/itensDescartados"> <Recycle size={18} /> Descartados </a>
       </Sidebar>
     </>

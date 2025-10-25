@@ -9,6 +9,7 @@ import Inventario from "./pages/Inventario";
 import Descartados from "./pages/ItensDescartados";
 import Funcionarios from "./pages/Funcionarios";
 import Garantia from "./pages/Garantia";
+import ForaGarantia from "./pages/ForaGarantia"
 
 export default function AppRoutes() {
 	return (
@@ -20,6 +21,7 @@ export default function AppRoutes() {
 				<Route path="/inventario" element={<Inventario/>} />
 				<Route path="/itensDescartados" element={<Descartados/>} />
 				<Route path="/garantias" element={<Garantia/>} />
+				<Route path="/foraGarantia" element={<ForaGarantia/>} />
 				<Route path="/funcionarios" element={<Funcionarios/>} />
 			</Routes>
 		</BrowserRouter>
