@@ -6,7 +6,7 @@ const Animation = keyframes({
 })
 
 export const StyledFooter = styled("footer", {
-	position: "fixed",
+	marginTop: "auto",
 	bottom: 0,
 	left: 0,
 	right: 0,
@@ -15,7 +15,7 @@ export const StyledFooter = styled("footer", {
 	display: "flex",
 	justifyContent: "center",
 	alignItems: "center",
-	backgroundColor: "#fff5",
+	backgroundColor: "rgba(0, 0, 0, 0.74)",
 
 	"& #copy": {
 		textAlign: "center",

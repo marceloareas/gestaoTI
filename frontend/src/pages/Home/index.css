@@ -1,12 +1,9 @@
 .tabela {
-    /* Define a largura máxima para que o conteúdo não se espalhe demais */
     max-width: 1200px; 
-    
-    /* Centraliza o elemento na tela (requer width ou max-width) */
     margin-left: auto;
     margin-right: auto;
-    
-    /* Adiciona uma margem superior e inferior (ajuste conforme necessário) */
     margin-top: 32px;
     margin-bottom: 32px;
+
+    padding-top: 80px;
 }

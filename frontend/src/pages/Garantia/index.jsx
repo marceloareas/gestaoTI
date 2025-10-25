@@ -10,7 +10,9 @@ export default function Garantia() {
 	return (
 		<StyledHome>
 			<Header />
+			<div className = 'tabela'>	
 				<TabelaPertoFimGarantia></TabelaPertoFimGarantia>
+			</div>
 			<Footer />
 		</StyledHome>
 	)

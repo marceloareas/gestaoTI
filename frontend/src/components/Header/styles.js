@@ -16,8 +16,8 @@ export const StyledHeader = styled("header", {
   zIndex: 10,
 
   ".headerContent": {
-    width: "90%",
-    maxWidth: "900px",
+    width: "95%",
+    maxWidth: "auto",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
@@ -42,7 +42,7 @@ export const StyledHeader = styled("header", {
   gap: "10px",
 
   img: {
-    height: "90px",
+    height: "120px",
     width: "auto",
     objectFit: "contain",
     cursor: "pointer",

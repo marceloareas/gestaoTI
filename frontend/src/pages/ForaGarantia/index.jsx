@@ -10,7 +10,9 @@ export default function ForaGarantia() {
     return (
         <StyledHome>
             <Header />
+            <div className = 'tabela'>	
                 <TabelaForaGarantia></TabelaForaGarantia>
+            </div>
             <Footer />
         </StyledHome>
     )
