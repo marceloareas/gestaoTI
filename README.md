@@ -1,106 +1,69 @@
-# TechManager
+# 💻 TechManager
 Sistema de gestão de equipamentos de TI
+Este projeto será desenvolvido como trabalho da disciplina de Projeto e Construção de Sistema e ministrado pelo professor Marcelo Arêas.  
+
+O projeto tem como objetivo facilitar a gestão de equipamentos de TI (notebooks e fones de ouvido) de uma empresa, substituindo o uso de planilhas manuais que podem gerar muitos erros e dificultam o controle de dados.
+
+
+## 🎯 Objetivo
+Facilitar a gestão do inventário de notebooks e fones de ouvido dos colaboradores da empresa:
+
+
+## ✅🆙 Principais benefícios
+- Organização centralizada
+
+- Registro de movimentações
+
+- Alertas de vencimento de garantia
+
+- Automação da “escadinha” de troca de equipamentos
+
+
+
+## ⚙️ Funcionalidades
+
+- CRUD de equipamentos
+
+  - Cadastro, edição, listagem e remoção de notebooks e fones de ouvido.
+
+- Gestão de status
+
+  - Controle do status de cada equipamento: `Em estoque`, `Em uso`, `Em manutenção` e `Descartado`
+
+- Alertas de garantia
+
+  - Notificações de equipamentos próximos do fim da garantia.
+
+- Sugestões de equipamentos
+
+  - Recomendação de equipamentos disponíveis em estoque para casos de extravio ou empréstimo.
+
+- Escadinha de troca
+
+  - Processo automático que distribui notebooks novos para colaboradores mais experientes, repassando os antigos para os menos experientes.
+
+
+
+## 💻 Tecnologias utilizadas
+
+- **Backend:** Java
+
+- **Frontend:** JavaScript
+
+- **Banco de Dados:** PostgreSQL
+
+
 
 ## Passo a passo desde clonagem do repositório até execução do frontend:
-### ABra o terminal e digite os comandos abaixo:
+## Subir docker(banco, adminer e back)
 ```bash
 git clone -b Develop https://github.com/marceloareas/gestaoTI.git
 ```
 
 ```bash
-cd .\gestaoTI\
+cd gestaoTI
 ```
 
-```bash
-cd .\frontend\
-```
-
-```bash
-npm i
-```
-
-```bash
-npm run dev
-```
-
-
-## 🚩 Início do desenvolvimento
-
-
-
-
-
-Sgutestões de **dependências primordiais**:
-
--   `React Router Dom` para o roteamento
--   `Iconify` para os ícones
--   `Stitches` para a estilização
-
-```bash
-npm install react-router-dom @iconify/react @stitches/react
-```
-
-Com isso, o projeto estará pronto para ser desenvolvido.
-
-```bash
-npm run dev
-```
-
-```
-│    │    ├── 📁 Header
-│    │    │    ├── index.jsx
-│    │    │    └── styles.js
-│    │    │
-│    │    ├── 📁 Componente1
-│    │    │    ├── index.jsx
-│    │    │    └── styles.js
-│    │    │
-│    │    └── 📁 Componente2
-│    │         ├── index.jsx
-│    │         └── styles.js
-│    │
-│    ├── 📁 pages
-│    │    ├── 📁 Home
-│    │    │    ├── index.jsx
-│    │    │    └── styles.js
-│    │    │
-│    │    └── 📁 Login
-│    │         ├── index.jsx
-│    │         └── styles.js
-│    │
-│    ├── App.jsx
-│    │
-│    ├── index.css
-│    │
-│    ├── main.jsx
-│    │
-│    └── Routes.jsx
-│
-├── .gitignore
-│
-├── .prettierrc
-│
-├── index.html
-│
-├── package.json
-│
-└── vite.config.js
-```
-
----
-
-## 📦 Componentes
-
-Existem diversas formas de organizar os componentes. A forma com a qual eu me adaptei melhor, e é mais organizada para futuras alterações é a seguinte:
-
-```bash
-📁 components
- └── 📁 NomeDoComponente
-      ├── index.jsx
-      └── style.js
-```
-
-## Subir docker(banco, adminer e back)
 ```bash
 cd infra
 ```
@@ -111,4 +74,27 @@ docker compose build backend
 
 ```bash
 docker compose up -d
+```
+
+## Rodar backend
+```bash
+cd backend
+```
+
+```bash
+./mvnw spring-boot:run
+```
+
+
+### Abra o terminal e digite os comandos abaixo:
+```bash
+cd .\frontend\
+```
+
+```bash
+npm i
+```
+
+```bash
+npm run dev
 ```
