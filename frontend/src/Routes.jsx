@@ -6,6 +6,7 @@ import Home from "./pages/Home"
 import Login from "./pages/Login"
 import Dashboard from "./components/Dashboard";
 import Inventario from "./pages/Inventario";
+import Historico from "./pages/Historico";
 import Descartados from "./pages/ItensDescartados";
 import Funcionarios from "./pages/Funcionarios";
 import Garantia from "./pages/Garantia";
@@ -23,6 +24,7 @@ export default function AppRoutes() {
 				<Route path="/garantias" element={<Garantia/>} />
 				<Route path="/foraGarantia" element={<ForaGarantia/>} />
 				<Route path="/funcionarios" element={<Funcionarios/>} />
+				<Route path="/historico" element={<Historico/>} />
 			</Routes>
 		</BrowserRouter>
 	)
