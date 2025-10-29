@@ -16,7 +16,21 @@ import Pagination from '@mui/material/Pagination';
 
 import { api } from "@/services/api";
 
-// ... (StyledTableCell, StyledTableRow) - Mantidos
+/* ===== helpers de formatação (evitam RangeError quando valor é inválido) ===== */
+const fmtDate = (v) => {
+  if (!v) return '—';
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('pt-BR');
+};
+const fmtDateTime = (v) => {
+  if (!v) return '—';
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? '—' : d.toLocaleString('pt-BR');
+};
+const fmtMoneyBRL = (v) =>
+  Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+/* ===== estilos ===== */
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   [`&.${tableCellClasses.head}`]: {
     backgroundColor: theme.palette.grey[900],
@@ -36,11 +50,11 @@ const StyledTableRow = styled(TableRow)(({ theme }) => ({
 export default function TabelaEquipamentos() {
   const [data, setData] = useState([]);
 
-  // estados auxiliares
+  // auxiliares
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
 
-  // --- MODAIS adicionar/editar/excluir ---
+  // modais
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [openDelete, setOpenDelete] = useState(false);
@@ -52,33 +66,42 @@ export default function TabelaEquipamentos() {
   const [formAdd, setFormAdd] = useState({
     numeroSerie: '',
     modeloEquipamentoId: '',
-    categoriaId: '',             // aqui vou armazenar o id de TIPO (por pedido)
+    categoriaId: '',     // aqui guardará o id do TIPO (por pedido)
     dataCompra: '',
     dataFimGarantia: '',
     precoCompra: '',
     observacoes: '',
   });
+
   const [formEdit, setFormEdit] = useState({
-    numero_serie: '',
+    numeroSerie: '',
+    categoriaId: '',
+    modeloEquipamentoId: '',
+    dataFimGarantia: '',
+    precoCompra: '',
+    observacoes: '',
+    // campos informativos (não enviados)
     marca: '',
-    modelo: ''
+    modelo: '',
   });
 
-  // listas para os selects
-  const [tipos, setTipos] = useState([]);        // vem de tipo_equipamento
-  const [modelos, setModelos] = useState([]);    // vem de modelo_equipamento
-
+  // listas p/ selects
+  const [tipos, setTipos] = useState([]);     // tipo_equipamento
+  const [modelos, setModelos] = useState([]); // modelo_equipamento
   const [loadingTipos, setLoadingTipos] = useState(false);
   const [loadingModelos, setLoadingModelos] = useState(false);
 
-  // loadings de ações
+  // ações
   const [savingEdit, setSavingEdit] = useState(false);
   const [savingAdd, setSavingAdd] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // paginação & busca
   const [page, setPage] = useState(1);
   const rowsPerPage = 5;
+  const [searchTerm, setSearchTerm] = useState('');
 
+  /* ===== carregar tabela ===== */
   useEffect(() => {
     api.get("/equipamentos")
       .then((r) => setData(r.data))
@@ -86,38 +109,211 @@ export default function TabelaEquipamentos() {
       .finally(() => setLoading(false));
   }, []);
 
-  // busca
-  const [searchTerm, setSearchTerm] = useState('');
-
-  // filtragem
+  /* ===== filtragem ===== */
   const equipamentosFiltrados = data.filter(eq =>
     eq.status !== "Descartado" &&
     (eq.numeroSerie ?? '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // payload p/ editar
-  const buildEquipamentoPayload = (orig, form) => ({
-    numeroSerie: form.numero_serie ?? orig.numeroSerie,
-    dataCompra: orig.dataCompra ?? null,
-    dataFimGarantia: orig.dataFimGarantia ?? null,
-    precoCompra: orig.precoCompra ?? null,
-    observacoes: orig.observacoes ?? null,
-    ...(orig.modeloEquipamentoId != null && { modeloEquipamentoId: orig.modeloEquipamentoId }),
-    ...(orig.categoriaId != null && { categoriaId: orig.categoriaId }),
-  });
+  /* ===== selects do ADD ===== */
+  useEffect(() => {
+    if (!openAdd) return;
+    (async () => {
+      try {
+        setLoadingTipos(true);
+        const { data } = await api.get('/tipos-equipamento');
+        setTipos(data || []);
+      } catch (e) {
+        console.error('Erro ao listar tipos_equipamento', e);
+        setTipos([]);
+      } finally {
+        setLoadingTipos(false);
+      }
+    })();
+  }, [openAdd]);
 
-  // EDITAR: abre modal e carrega dados no form
-  const handleDetalhes = (eq) => {
-    setSelectedEq(eq);
-    setFormEdit({
-      numero_serie: eq.numeroSerie ?? '',
-      marca: eq.marca ?? '',
-      modelo: eq.modelo ?? '',
-    });
-    setOpenEdit(true);
+  useEffect(() => {
+    if (!openAdd) return;
+    const tipoId = formAdd.categoriaId;
+    if (!tipoId) { setModelos([]); return; }
+
+    (async () => {
+      try {
+        setLoadingModelos(true);
+        const { data } = await api.get('/modelos-equipamento', { params: { tipoId } });
+        setModelos(data || []);
+      } catch (e) {
+        console.error('Erro ao listar modelos_equipamento', e);
+        setModelos([]);
+      } finally {
+        setLoadingModelos(false);
+      }
+    })();
+  }, [openAdd, formAdd.categoriaId]);
+
+  /* ===== ADD: submit ===== */
+  const handleSubmitAdd = async (e) => {
+    e.preventDefault();
+
+    const payload = {
+      numeroSerie: String(formAdd.numeroSerie || '').trim(),
+      modeloEquipamentoId: formAdd.modeloEquipamentoId ? Number(formAdd.modeloEquipamentoId) : null,
+      categoriaId: formAdd.categoriaId ? Number(formAdd.categoriaId) : null, // aqui vai o id do TIPO (por pedido)
+      dataCompra: formAdd.dataCompra || null,
+      dataFimGarantia: formAdd.dataFimGarantia || null,
+      precoCompra: formAdd.precoCompra !== '' ? Number(formAdd.precoCompra) : null,
+      observacoes: formAdd.observacoes || null,
+    };
+
+    if (!payload.numeroSerie) return alert("Informe o número de série.");
+    if (!payload.categoriaId) return alert("Selecione o Tipo de Equipamento.");
+    if (!payload.modeloEquipamentoId) return alert("Selecione o Modelo do Equipamento.");
+
+    try {
+      setSavingAdd(true);
+      await api.post("/equipamentos", payload);
+
+      const r = await api.get("/equipamentos");
+      setData(r.data);
+
+      setOpenAdd(false);
+    } catch (e) {
+      console.error("Falha ao criar equipamento:", e);
+      alert("Não foi possível criar o equipamento.");
+    } finally {
+      setSavingAdd(false);
+    }
   };
 
-  // EXCLUIR: abre modal confirmação
+  /* ===== EDIT: abrir modal, buscar detalhes e listas ===== */
+  const handleDetalhes = async (eq) => {
+    try {
+      setSelectedEq(eq);
+
+      // tenta buscar detalhes pelo id (para obter categoriaId e modeloEquipamentoId)
+      let det = null;
+      try {
+        const { data } = await api.get(`/equipamentos/${eq.id}`);
+        det = data;
+      } catch {
+        // se não existir endpoint, segue com o que temos na linha
+      }
+
+      const numeroSerie = det?.numeroSerie ?? eq.numeroSerie ?? '';
+      const categoriaId = det?.categoriaId ?? '';            // id do tipo
+      const modeloEquipamentoId = det?.modeloEquipamentoId ?? '';
+      const dataFimGarantia = det?.dataFimGarantia ?? eq.dataFimGarantia ?? '';
+      const precoCompra = det?.precoCompra ?? eq.precoCompra ?? '';
+      const observacoes = det?.observacoes ?? eq.observacoes ?? '';
+
+      setFormEdit({
+        numeroSerie,
+        categoriaId,
+        modeloEquipamentoId,
+        dataFimGarantia,
+        precoCompra,
+        observacoes,
+        marca: det?.marca ?? eq.marca ?? '',
+        modelo: det?.modelo ?? eq.modelo ?? '',
+      });
+
+      // carrega tipos
+      setLoadingTipos(true);
+      const { data: tiposData } = await api.get('/tipos-equipamento');
+      setTipos(tiposData || []);
+      setLoadingTipos(false);
+
+      // se já existir tipo, carrega modelos filtrados
+      if (categoriaId) {
+        setLoadingModelos(true);
+        const { data: modelosData } = await api.get('/modelos-equipamento', { params: { tipoId: categoriaId } });
+        setModelos(modelosData || []);
+        setLoadingModelos(false);
+      } else {
+        setModelos([]);
+      }
+
+      setOpenEdit(true);
+    } catch (e) {
+      console.error('Erro ao abrir edição:', e);
+      alert('Não foi possível carregar os dados para edição.');
+    }
+  };
+
+  // quando trocar tipo no EDIT, recarrega modelos
+  useEffect(() => {
+    if (!openEdit) return;
+    const tipoId = formEdit.categoriaId;
+    if (!tipoId) { setModelos([]); return; }
+
+    (async () => {
+      try {
+        setLoadingModelos(true);
+        const { data } = await api.get('/modelos-equipamento', { params: { tipoId } });
+        setModelos(data || []);
+      } catch (e) {
+        console.error('Erro ao listar modelos (editar)', e);
+        setModelos([]);
+      } finally {
+        setLoadingModelos(false);
+      }
+    })();
+  }, [openEdit, formEdit.categoriaId]);
+
+  const handleCloseAdd = () => setOpenAdd(false);
+  const handleCloseEdit = () => setOpenEdit(false);
+
+  /* ===== EDIT: submit ===== */
+  const handleSubmitEdit = async (e) => {
+    e.preventDefault();
+    if (!selectedEq) return;
+
+    const payload = {
+      numeroSerie: (formEdit.numeroSerie || '').trim(),
+      modeloEquipamentoId: formEdit.modeloEquipamentoId ? Number(formEdit.modeloEquipamentoId) : null,
+      categoriaId: formEdit.categoriaId ? Number(formEdit.categoriaId) : null,
+      dataFimGarantia: formEdit.dataFimGarantia || null,
+      precoCompra: formEdit.precoCompra !== '' ? Number(formEdit.precoCompra) : null,
+      observacoes: formEdit.observacoes || null,
+    };
+
+    if (!payload.numeroSerie) return alert("Informe o número de série.");
+    if (!payload.categoriaId) return alert("Selecione o Tipo de Equipamento.");
+    if (!payload.modeloEquipamentoId) return alert("Selecione o Modelo do Equipamento.");
+
+    try {
+      setSavingEdit(true);
+      await api.put(`/equipamentos/${selectedEq.id}`, payload);
+
+      // atualiza em memória
+      setData((list) =>
+        list.map((it) =>
+          it.id === selectedEq.id
+            ? {
+                ...it,
+                numeroSerie: payload.numeroSerie,
+                dataFimGarantia: payload.dataFimGarantia ?? it.dataFimGarantia,
+                precoCompra: payload.precoCompra ?? it.precoCompra,
+                observacoes: payload.observacoes ?? it.observacoes,
+                // ajusta marca/modelo/categoria com base nas listas
+                marca: (modelos.find((m) => m.id === payload.modeloEquipamentoId)?.marca) ?? it.marca,
+                modelo: (modelos.find((m) => m.id === payload.modeloEquipamentoId)?.modelo) ?? it.modelo,
+                categoria: (tipos.find((t) => t.id === payload.categoriaId)?.nome) ?? it.categoria,
+              }
+            : it
+        )
+      );
+
+      setOpenEdit(false);
+    } catch (err) {
+      console.error("Falha ao atualizar equipamento:", err);
+      alert("Não foi possível salvar as alterações.");
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  /* ===== excluir ===== */
   const handleExcluir = (eq) => {
     setEqToDelete(eq);
     setOpenDelete(true);
@@ -144,143 +340,7 @@ export default function TabelaEquipamentos() {
     setEqToDelete(null);
   };
 
-  // Adicionar
-  const handleOpenAdd = () => {
-    setFormAdd({
-      numeroSerie: '',
-      modeloEquipamentoId: '',
-      categoriaId: '', // guardará id de TIPO (por pedido)
-      dataCompra: '',
-      dataFimGarantia: '',
-      precoCompra: '',
-      observacoes: '',
-    });
-    setOpenAdd(true);
-  };
-  const handleCloseAdd = () => setOpenAdd(false);
-
-  // Editar
-  const handleCloseEdit = () => setOpenEdit(false);
-
-  // ====== CARREGAR LISTAS PARA OS SELECTS ======
-
-  // Carrega tipos ao abrir modal
-  useEffect(() => {
-    if (!openAdd) return;
-    const loadTipos = async () => {
-      try {
-        setLoadingTipos(true);
-        const { data } = await api.get('/tipos-equipamento');
-        setTipos(data || []);
-      } catch (e) {
-        console.error('Erro ao listar tipos_equipamento', e);
-        setTipos([]);
-      } finally {
-        setLoadingTipos(false);
-      }
-    };
-    loadTipos();
-  }, [openAdd]);
-
-  // Carrega modelos quando escolher o tipo (categoriaId está sendo usado como o tipo escolhido)
-  useEffect(() => {
-    const tipoId = formAdd.categoriaId;
-    if (!openAdd) return;
-    if (!tipoId) { setModelos([]); return; }
-
-    const loadModelos = async () => {
-      try {
-        setLoadingModelos(true);
-        const { data } = await api.get('/modelos-equipamento', { params: { tipoId } });
-        setModelos(data || []);
-      } catch (e) {
-        console.error('Erro ao listar modelos_equipamento', e);
-        setModelos([]);
-      } finally {
-        setLoadingModelos(false);
-      }
-    };
-    loadModelos();
-  }, [openAdd, formAdd.categoriaId]);
-
-  // SUBMIT: ADICIONAR (integrado ao backend)
-  const handleSubmitAdd = async (e) => {
-    e.preventDefault();
-
-    // monta payload no formato exato esperado
-    const payload = {
-      numeroSerie: String(formAdd.numeroSerie || '').trim(),
-      modeloEquipamentoId: formAdd.modeloEquipamentoId ? Number(formAdd.modeloEquipamentoId) : null,
-      categoriaId: formAdd.categoriaId ? Number(formAdd.categoriaId) : null, // aqui vai o id do TIPO (por pedido)
-      dataCompra: formAdd.dataCompra || null,
-      dataFimGarantia: formAdd.dataFimGarantia || null,
-      precoCompra: formAdd.precoCompra !== '' ? Number(formAdd.precoCompra) : null,
-      observacoes: formAdd.observacoes || null,
-    };
-
-    if (!payload.numeroSerie) {
-      alert("Informe o número de série.");
-      return;
-    }
-    if (!payload.categoriaId) {
-      alert("Selecione o Tipo de Equipamento.");
-      return;
-    }
-    if (!payload.modeloEquipamentoId) {
-      alert("Selecione o Modelo do Equipamento.");
-      return;
-    }
-
-    try {
-      setSavingAdd(true);
-      await api.post("/equipamentos", payload);
-
-      // recarrega a lista para refletir joins (marca/modelo/categoria/status)
-      const r = await api.get("/equipamentos");
-      setData(r.data);
-
-      setOpenAdd(false);
-    } catch (e) {
-      console.error("Falha ao criar equipamento:", e);
-      alert("Não foi possível criar o equipamento.");
-    } finally {
-      setSavingAdd(false);
-    }
-  };
-
-  // SUBMIT: EDITAR (integrado ao backend)
-  const handleSubmitEdit = async (e) => {
-    e.preventDefault();
-    if (!selectedEq) return;
-
-    try {
-      setSavingEdit(true);
-      const id = selectedEq.id;
-      const payload = buildEquipamentoPayload(selectedEq, formEdit);
-      await api.put(`/equipamentos/${id}`, payload);
-
-      setData((list) =>
-        list.map((it) =>
-          it.id === id
-            ? {
-                ...it,
-                numeroSerie: payload.numeroSerie,
-                marca: formEdit.marca,
-                modelo: formEdit.modelo,
-              }
-            : it
-        )
-      );
-
-      setOpenEdit(false);
-    } catch (err) {
-      console.error("Falha ao atualizar equipamento:", err);
-      alert("Não foi possível salvar as alterações.");
-    } finally {
-      setSavingEdit(false);
-    }
-  };
-
+  /* ===== paginação ===== */
   const startIndex = (page - 1) * rowsPerPage;
   const endIndex = startIndex + rowsPerPage;
   const equipamentosPaginados = equipamentosFiltrados.slice(startIndex, endIndex);
@@ -288,11 +348,27 @@ export default function TabelaEquipamentos() {
   return (
     <>
       <TableContainer component={Paper}>
-        <Button variant="outlined" size="large" sx={{ margin: 2, width: 300 }} onClick={handleOpenAdd}>
+        <Button
+          variant="outlined"
+          size="large"
+          sx={{ margin: 2, width: 300 }}
+          onClick={() => {
+            setFormAdd({
+              numeroSerie: '',
+              modeloEquipamentoId: '',
+              categoriaId: '',
+              dataCompra: '',
+              dataFimGarantia: '',
+              precoCompra: '',
+              observacoes: '',
+            });
+            setOpenAdd(true);
+          }}
+        >
           Adicionar equipamento
         </Button>
 
-        {/* BARRA DE PESQUISA */}
+        {/* busca */}
         <TextField
           label="Buscar por Identificador"
           variant="outlined"
@@ -308,15 +384,15 @@ export default function TabelaEquipamentos() {
             ),
           }}
         />
-        {/* FIM DA BARRA DE PESQUISA */}
 
         <Table sx={{ minWidth: 900 }} aria-label="tabela de equipamentos">
-          <TableHead backgroundColor>
+          {/* corrige o warning: não usar prop 'backgroundColor' direto */}
+          <TableHead sx={{ backgroundColor: 'grey.900' }}>
             <TableRow>
               <StyledTableCell>Identificador</StyledTableCell>
-              <StyledTableCell> Marca </StyledTableCell>
-              <StyledTableCell> Modelo </StyledTableCell>
-              <StyledTableCell> Categoria </StyledTableCell>
+              <StyledTableCell>Marca</StyledTableCell>
+              <StyledTableCell>Modelo</StyledTableCell>
+              <StyledTableCell>Categoria</StyledTableCell>
               <StyledTableCell>Fim da Garantia</StyledTableCell>
               <StyledTableCell align="right">Preço de Compra</StyledTableCell>
               <StyledTableCell>Observações</StyledTableCell>
@@ -333,12 +409,10 @@ export default function TabelaEquipamentos() {
                 <StyledTableCell>{eq.marca}</StyledTableCell>
                 <StyledTableCell>{eq.modelo}</StyledTableCell>
                 <StyledTableCell>{eq.categoria}</StyledTableCell>
-                <StyledTableCell>{new Date(eq.dataFimGarantia).toLocaleDateString('pt-BR')}</StyledTableCell>
-                <StyledTableCell align="right">
-                  {Number(eq.precoCompra ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </StyledTableCell>
+                <StyledTableCell>{fmtDate(eq.dataFimGarantia)}</StyledTableCell>
+                <StyledTableCell align="right">{fmtMoneyBRL(eq.precoCompra)}</StyledTableCell>
                 <StyledTableCell>{eq.observacoes}</StyledTableCell>
-                <StyledTableCell>{new Date(eq.dataCompra).toLocaleString('pt-BR')}</StyledTableCell>
+                <StyledTableCell>{fmtDateTime(eq.dataCompra)}</StyledTableCell>
 
                 <StyledTableCell align="center">
                   {eq.status === "Em estoque" ? (
@@ -370,7 +444,7 @@ export default function TabelaEquipamentos() {
 
             {equipamentosFiltrados.length === 0 && (
               <StyledTableRow>
-                <StyledTableCell colSpan={9} align="center">
+                <StyledTableCell colSpan={10} align="center">
                   Nenhum equipamento encontrado com o identificador "{searchTerm}".
                 </StyledTableCell>
               </StyledTableRow>
@@ -381,8 +455,8 @@ export default function TabelaEquipamentos() {
 
       <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
         <Pagination
-          count={Math.ceil(equipamentosFiltrados.length / rowsPerPage)}
-        page={page}
+          count={Math.ceil(equipamentosFiltrados.length / rowsPerPage) || 1}
+          page={page}
           onChange={(e, value) => setPage(value)}
           color="primary"
         />
@@ -391,7 +465,7 @@ export default function TabelaEquipamentos() {
       {/* MODAL: ADICIONAR */}
       <Modal
         open={openAdd}
-        onClose={handleCloseAdd}
+        onClose={() => setOpenAdd(false)}
         aria-labelledby="modal-add"
         slotProps={{
           backdrop: { sx: { backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' } }
@@ -414,7 +488,6 @@ export default function TabelaEquipamentos() {
               onChange={(e) => setFormAdd(v => ({ ...v, numeroSerie: e.target.value }))}
             />
 
-            {/* SELECT: Categoria (usando tipo_equipamento, conforme pedido) */}
             <FormControl fullWidth margin="dense" size="small">
               <InputLabel id="lbl-categoria">Tipo de Equipamento</InputLabel>
               <Select
@@ -433,7 +506,6 @@ export default function TabelaEquipamentos() {
               </Select>
             </FormControl>
 
-            {/* SELECT: Modelo (filtra por tipo escolhido acima) */}
             <FormControl fullWidth margin="dense" size="small">
               <InputLabel id="lbl-modelo">Modelo do Equipamento</InputLabel>
               <Select
@@ -485,7 +557,7 @@ export default function TabelaEquipamentos() {
             />
 
             <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mt: 2 }}>
-              <Button onClick={handleCloseAdd}>Cancelar</Button>
+              <Button onClick={() => setOpenAdd(false)}>Cancelar</Button>
               <Button type="submit" variant="contained" disabled={savingAdd}>
                 {savingAdd ? "Salvando..." : "Salvar"}
               </Button>
@@ -506,7 +578,7 @@ export default function TabelaEquipamentos() {
         <Box sx={{
           position: 'absolute', top: '50%', left: '50%',
           transform: 'translate(-50%, -50%)',
-          bgcolor: '#fff', p: 3, borderRadius: 2, boxShadow: 24, width: 420
+          bgcolor: '#fff', p: 3, borderRadius: 2, boxShadow: 24, width: 480
         }}>
           <Typography id="modal-edit" variant="h6" gutterBottom>
             Editar Equipamento
@@ -516,20 +588,70 @@ export default function TabelaEquipamentos() {
             <TextField
               label="Número de Série"
               fullWidth size="small" margin="dense"
-              value={formEdit.numero_serie}
-              onChange={(e) => setFormEdit(v => ({ ...v, numero_serie: e.target.value }))}
+              value={formEdit.numeroSerie}
+              onChange={(e) => setFormEdit(v => ({ ...v, numeroSerie: e.target.value }))}
             />
+
+            {/* SELECT: Tipo (usa formEdit.categoriaId) */}
+            <FormControl fullWidth margin="dense" size="small">
+              <InputLabel id="lbl-categoria-edit">Tipo de Equipamento</InputLabel>
+              <Select
+                labelId="lbl-categoria-edit"
+                label="Tipo de Equipamento"
+                value={formEdit.categoriaId || ''}
+                onChange={(e) => {
+                  const idTipo = e.target.value;
+                  // ao mudar o tipo, zera o modelo para obrigar nova seleção
+                  setFormEdit(v => ({ ...v, categoriaId: idTipo, modeloEquipamentoId: '' }));
+                }}
+                disabled={loadingTipos}
+              >
+                {tipos.map((t) => (
+                  <MenuItem key={t.id} value={t.id}>{t.nome}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* SELECT: Modelo (filtra por tipo escolhido) */}
+            <FormControl fullWidth margin="dense" size="small">
+              <InputLabel id="lbl-modelo-edit">Modelo do Equipamento</InputLabel>
+              <Select
+                labelId="lbl-modelo-edit"
+                label="Modelo do Equipamento"
+                value={formEdit.modeloEquipamentoId || ''}
+                onChange={(e) => setFormEdit(v => ({ ...v, modeloEquipamentoId: e.target.value }))}
+                disabled={!formEdit.categoriaId || loadingModelos}
+              >
+                {modelos.map((m) => (
+                  <MenuItem key={m.id} value={m.id}>
+                    {m.marca} {m.modelo}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
             <TextField
-              label="Marca"
+              label="Data Fim Garantia"
+              type="date"
               fullWidth size="small" margin="dense"
-              value={formEdit.marca}
-              onChange={(e) => setFormEdit(v => ({ ...v, marca: e.target.value }))}
+              value={formEdit.dataFimGarantia || ''}
+              onChange={(e) => setFormEdit(v => ({ ...v, dataFimGarantia: e.target.value }))}
+              InputLabelProps={{ shrink: true }}
             />
+
             <TextField
-              label="Modelo"
+              label="Preço de Compra"
+              type="number" inputProps={{ step: "0.01" }}
               fullWidth size="small" margin="dense"
-              value={formEdit.modelo}
-              onChange={(e) => setFormEdit(v => ({ ...v, modelo: e.target.value }))}
+              value={formEdit.precoCompra ?? ''}
+              onChange={(e) => setFormEdit(v => ({ ...v, precoCompra: e.target.value }))}
+            />
+
+            <TextField
+              label="Observações"
+              fullWidth size="small" margin="dense" multiline minRows={2}
+              value={formEdit.observacoes || ''}
+              onChange={(e) => setFormEdit(v => ({ ...v, observacoes: e.target.value }))}
             />
 
             <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mt: 2 }}>
@@ -539,37 +661,6 @@ export default function TabelaEquipamentos() {
               </Button>
             </Box>
           </form>
-        </Box>
-      </Modal>
-
-      {/* MODAL: CONFIRMAR EXCLUSÃO */}
-      <Modal
-        open={openDelete}
-        onClose={cancelDelete}
-        aria-labelledby="modal-delete"
-        slotProps={{
-          backdrop: { sx: { backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' } }
-        }}
-      >
-        <Box sx={{
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
-          bgcolor: '#fff', p: 3, borderRadius: 2, boxShadow: 24, width: 420
-        }}>
-          <Typography id="modal-delete" variant="h6" gutterBottom>
-            Confirmar exclusão
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 2 }}>
-            Tem certeza que deseja excluir o equipamento{" "}
-            <strong>{eqToDelete?.numeroSerie}</strong>?
-          </Typography>
-
-          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-            <Button onClick={cancelDelete}>Cancelar</Button>
-            <Button variant="contained" color="error" onClick={confirmDelete} disabled={deleting}>
-              {deleting ? "Excluindo..." : "Excluir"}
-            </Button>
-          </Box>
         </Box>
       </Modal>
     </>
