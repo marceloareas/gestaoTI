@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom"
 
 import Home from "./pages/Home"
 import Login from "./pages/Login"
-import Dashboard from "./components/Dashboard";
+import Dashboard from "./components/Dashboard/Dashboard";
 import Inventario from "./pages/Inventario";
 import Historico from "./pages/Historico";
 import Descartados from "./pages/ItensDescartados";

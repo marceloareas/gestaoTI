@@ -7,21 +7,35 @@ export default function TipoChart({ data }) {
     value: qtd
   }));
 
+  // 🎨 Paleta com mais cores (você pode personalizar à vontade)
+  const COLORS = [
+    "#0088FE", // azul
+    "#00C49F", // verde
+    "#FFBB28", // amarelo
+    "#FF8042", // laranja
+    "#AA46BE", // roxo
+    "#FF6699", // rosa
+    "#33CCCC", // ciano
+    "#999999", // cinza
+    "#66CC33", // verde claro
+    "#CC3333"  // vermelho escuro
+  ];
+
   return (
     <div className="p-4 bg-white rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-2">Equipamentos por Tipo</h2>
-      <PieChart width={300} height={300}>
+      <h2 className="text-xl font-semibold mb-2" style={{ color: "#1f2937" }}>Equipamentos por Tipo</h2>
+      <PieChart width={350} height={300}>
         <Pie
           data={chartData}
           cx="50%"
           cy="50%"
-          outerRadius={80}
+          outerRadius={90}
           fill="#8884d8"
           dataKey="value"
-          label
+          label={({ name, value }) => `${name}: ${value}`}
         >
           {chartData.map((_, index) => (
-            <Cell key={index} fill={["#0088FE", "#FF8042", "#00C49F"][index % 3]} />
+            <Cell key={index} fill={COLORS[index % COLORS.length]} />
           ))}
         </Pie>
         <Tooltip />
