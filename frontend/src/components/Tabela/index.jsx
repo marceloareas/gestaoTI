@@ -396,7 +396,6 @@ export default function TabelaEquipamentos() {
               <StyledTableCell>Fim da Garantia</StyledTableCell>
               <StyledTableCell align="right">Preço de Compra</StyledTableCell>
               <StyledTableCell>Observações</StyledTableCell>
-              <StyledTableCell>Data de Compra</StyledTableCell>
               <StyledTableCell align="center">Status</StyledTableCell>
               <StyledTableCell align="center">Ações</StyledTableCell>
             </TableRow>
@@ -412,7 +411,6 @@ export default function TabelaEquipamentos() {
                 <StyledTableCell>{fmtDate(eq.dataFimGarantia)}</StyledTableCell>
                 <StyledTableCell align="right">{fmtMoneyBRL(eq.precoCompra)}</StyledTableCell>
                 <StyledTableCell>{eq.observacoes}</StyledTableCell>
-                <StyledTableCell>{fmtDateTime(eq.dataCompra)}</StyledTableCell>
 
                 <StyledTableCell align="center">
                   {eq.status === "Em estoque" ? (
