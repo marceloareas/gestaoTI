@@ -5,6 +5,7 @@ import MarcaChart from "../MarcaChart";
 import GarantiaChart from "../GraficoGarantia/GarantiaChart";
 import StatusChart from "../StatusChart/StatusChart";
 import GastosNotebookChart from "../GastosNotebooksChart/GastosNotebooksChart";
+import TotalNotebooksAnoChart from "../TotalNotebooksAnoChart/TotalNotebooksChartAno";
 import Header from "../Header/Header";
 import Footer from "../Footer/index";
 import { api } from "@/services/api";
@@ -42,7 +43,10 @@ export default function Dashboard() {
     return acc;
   }, {});
 
-  const totalValorCompra = data.reduce((acc, eq) => acc + (eq.precoCompra || 0), 0);
+  const totalValorCompra = 
+  data.reduce(
+    (acc, eq) => 
+      acc + (eq.precoCompra || 0), 0);
 
   const equipamentosGarantiaExpirada = data.filter((eq) => {
     const hoje = new Date();
@@ -62,6 +66,8 @@ export default function Dashboard() {
 
       <div className="dashboard-container">
         <h1 className="dashboard-title">Dashboard</h1>
+
+        <hr style={{ border: "1px solid #d1d5db", margin: "17px 0" }} />
 
         {/* Cards */}
         <div className="dashboard-cards">
@@ -96,6 +102,7 @@ export default function Dashboard() {
           <GarantiaChart data={data} />
           <StatusChart data={data} />
           <GastosNotebookChart data={data} />
+          <TotalNotebooksAnoChart data={data} />
         </div>
       </div>
 
@@ -104,12 +111,44 @@ export default function Dashboard() {
   );
 }
 
-// 💡 Componente de Card de resumo
+// Componente de Card de resumo
 function Card({ title, value, color }) {
   return (
-    <div className={`p-5 rounded-xl shadow-md text-white ${color}`}>
-      <h3 className="text-sm uppercase font-medium opacity-80">{title}</h3>
-      <p className="text-2xl font-bold mt-2">{value}</p>
+    <div
+      className={`p-5 rounded-xl shadow-md text-white ${color}`}
+      style={{
+        border: "2px solid #d0cdcdff",     // borda verde
+        borderRadius: "5px",            // cantos arredondados
+        display: "flex",                 // ativa o flexbox
+        flexDirection: "column",         // empilha os textos em coluna
+        justifyContent: "center",        // centraliza verticalmente
+        alignItems: "center",            // centraliza horizontalmente
+        textAlign: "center",             // centraliza o texto
+        height: "110px",                 // altura fixa (opcional)
+        boxShadow: "2px 2px 5px rgba(0,0,0,0.1)", // sombra
+      }}
+    >
+      <h3
+        style={{
+          fontSize: "0.875rem",          // equivalente a text-sm
+          textTransform: "uppercase",
+          fontWeight: "500",
+          opacity: 0.8,
+          margin: 0,
+        }}
+      >
+        {title}
+      </h3>
+      <p
+        style={{
+          fontSize: "1.5rem",            // equivalente a text-2xl
+          fontWeight: "bold",
+          marginTop: "8px",
+          marginBottom: 0,
+        }}
+      >
+        {value}
+      </p>
     </div>
   );
 }

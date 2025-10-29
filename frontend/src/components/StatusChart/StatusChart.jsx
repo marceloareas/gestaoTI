@@ -15,11 +15,13 @@ export default function StatusChart({ data }) {
   }));
 
   // Paleta de cores (você pode personalizar)
-  const COLORS = ["#00C49F", "#FFBB28", "#0088FE", "#FF8042", "#AA46BE"];
+  const COLORS = ["#00C49F", "#0088FE", "#FFBB28", "#FF8042", "#AA46BE"];
 
   return (
     <div className="p-4 bg-white rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-2" style={{ color: "#1f2937" }}>Equipamentos por Status</h2>
+      <h2 className="text-xl font-semibold mb-2" style={{ color: "#1f2937" }}>
+        Equipamentos por Status
+      </h2>
       <PieChart width={350} height={300}>
         <Pie
           data={chartData}

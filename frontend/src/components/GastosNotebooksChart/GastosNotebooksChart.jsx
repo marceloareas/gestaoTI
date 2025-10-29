@@ -20,6 +20,14 @@ export default function GastosNotebookChart({ data }) {
     }))
     .sort((a, b) => a.ano - b.ano); // ordena os anos
 
+    const maxValor = Math.max(...chartData.map(d => d.total));
+    const interval = 5000; // 5k
+    const ticksArray = [];
+    for (let i = 0; i <= maxValor; i += interval) {
+    ticksArray.push(i);
+    }
+
+
   return (
     <div className="p-4 bg-white rounded-lg shadow">
       <h2 className="text-xl font-semibold mb-2" style={{ color: "#1f2937" }}>Gasto com Notebooks por Ano</h2>
@@ -28,16 +36,16 @@ export default function GastosNotebookChart({ data }) {
         width={450}
         height={300}
         data={chartData}
-        margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+        margin={{ top: 20, right: 20, left: 20, bottom: 0 }}
       >
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="ano" />
         <YAxis
-          tickFormatter={(value) =>
-            `R$ ${(value / 1000).toFixed(1)}k` // Mostra valores em mil reais
-          }
-          allowDecimals={false}
+        tickFormatter={(value) => `R$ ${value / 1000}k`}
+        allowDecimals={false}
+        ticks={ticksArray}
         />
+
         <Tooltip
           formatter={(value) =>
             `R$ ${value.toLocaleString("pt-BR", {
