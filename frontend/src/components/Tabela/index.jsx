@@ -11,9 +11,8 @@ import { Button, TextField } from '@mui/material';
 import ModeEditOutlineRoundedIcon from '@mui/icons-material/ModeEditOutlineRounded';
 import SearchIcon from '@mui/icons-material/Search';
 import InputAdornment from '@mui/material/InputAdornment';
-import { Modal, Box, Typography } from '@mui/material';
+import { Modal, Box, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import Pagination from '@mui/material/Pagination';
-
 
 import { api } from "@/services/api";
 
@@ -53,7 +52,7 @@ export default function TabelaEquipamentos() {
   const [formAdd, setFormAdd] = useState({
     numeroSerie: '',
     modeloEquipamentoId: '',
-    categoriaId: '',
+    categoriaId: '',             // aqui vou armazenar o id de TIPO (por pedido)
     dataCompra: '',
     dataFimGarantia: '',
     precoCompra: '',
@@ -65,6 +64,13 @@ export default function TabelaEquipamentos() {
     modelo: ''
   });
 
+  // listas para os selects
+  const [tipos, setTipos] = useState([]);        // vem de tipo_equipamento
+  const [modelos, setModelos] = useState([]);    // vem de modelo_equipamento
+
+  const [loadingTipos, setLoadingTipos] = useState(false);
+  const [loadingModelos, setLoadingModelos] = useState(false);
+
   // loadings de ações
   const [savingEdit, setSavingEdit] = useState(false);
   const [savingAdd, setSavingAdd] = useState(false);
@@ -72,7 +78,6 @@ export default function TabelaEquipamentos() {
 
   const [page, setPage] = useState(1);
   const rowsPerPage = 5;
-
 
   useEffect(() => {
     api.get("/equipamentos")
@@ -144,7 +149,7 @@ export default function TabelaEquipamentos() {
     setFormAdd({
       numeroSerie: '',
       modeloEquipamentoId: '',
-      categoriaId: '',
+      categoriaId: '', // guardará id de TIPO (por pedido)
       dataCompra: '',
       dataFimGarantia: '',
       precoCompra: '',
@@ -157,6 +162,47 @@ export default function TabelaEquipamentos() {
   // Editar
   const handleCloseEdit = () => setOpenEdit(false);
 
+  // ====== CARREGAR LISTAS PARA OS SELECTS ======
+
+  // Carrega tipos ao abrir modal
+  useEffect(() => {
+    if (!openAdd) return;
+    const loadTipos = async () => {
+      try {
+        setLoadingTipos(true);
+        const { data } = await api.get('/tipos-equipamento');
+        setTipos(data || []);
+      } catch (e) {
+        console.error('Erro ao listar tipos_equipamento', e);
+        setTipos([]);
+      } finally {
+        setLoadingTipos(false);
+      }
+    };
+    loadTipos();
+  }, [openAdd]);
+
+  // Carrega modelos quando escolher o tipo (categoriaId está sendo usado como o tipo escolhido)
+  useEffect(() => {
+    const tipoId = formAdd.categoriaId;
+    if (!openAdd) return;
+    if (!tipoId) { setModelos([]); return; }
+
+    const loadModelos = async () => {
+      try {
+        setLoadingModelos(true);
+        const { data } = await api.get('/modelos-equipamento', { params: { tipoId } });
+        setModelos(data || []);
+      } catch (e) {
+        console.error('Erro ao listar modelos_equipamento', e);
+        setModelos([]);
+      } finally {
+        setLoadingModelos(false);
+      }
+    };
+    loadModelos();
+  }, [openAdd, formAdd.categoriaId]);
+
   // SUBMIT: ADICIONAR (integrado ao backend)
   const handleSubmitAdd = async (e) => {
     e.preventDefault();
@@ -165,20 +211,23 @@ export default function TabelaEquipamentos() {
     const payload = {
       numeroSerie: String(formAdd.numeroSerie || '').trim(),
       modeloEquipamentoId: formAdd.modeloEquipamentoId ? Number(formAdd.modeloEquipamentoId) : null,
-      categoriaId: formAdd.categoriaId ? Number(formAdd.categoriaId) : null,
+      categoriaId: formAdd.categoriaId ? Number(formAdd.categoriaId) : null, // aqui vai o id do TIPO (por pedido)
       dataCompra: formAdd.dataCompra || null,
       dataFimGarantia: formAdd.dataFimGarantia || null,
       precoCompra: formAdd.precoCompra !== '' ? Number(formAdd.precoCompra) : null,
       observacoes: formAdd.observacoes || null,
     };
 
-    // validação simples
     if (!payload.numeroSerie) {
       alert("Informe o número de série.");
       return;
     }
-    if (!payload.modeloEquipamentoId || !payload.categoriaId) {
-      alert("Informe modeloEquipamentoId e categoriaId (IDs válidos).");
+    if (!payload.categoriaId) {
+      alert("Selecione o Tipo de Equipamento.");
+      return;
+    }
+    if (!payload.modeloEquipamentoId) {
+      alert("Selecione o Modelo do Equipamento.");
       return;
     }
 
@@ -210,7 +259,6 @@ export default function TabelaEquipamentos() {
       const payload = buildEquipamentoPayload(selectedEq, formEdit);
       await api.put(`/equipamentos/${id}`, payload);
 
-      // atualiza visualmente (para numeroSerie)
       setData((list) =>
         list.map((it) =>
           it.id === id
@@ -236,7 +284,6 @@ export default function TabelaEquipamentos() {
   const startIndex = (page - 1) * rowsPerPage;
   const endIndex = startIndex + rowsPerPage;
   const equipamentosPaginados = equipamentosFiltrados.slice(startIndex, endIndex);
-
 
   return (
     <>
@@ -335,7 +382,7 @@ export default function TabelaEquipamentos() {
       <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
         <Pagination
           count={Math.ceil(equipamentosFiltrados.length / rowsPerPage)}
-          page={page}
+        page={page}
           onChange={(e, value) => setPage(value)}
           color="primary"
         />
@@ -367,23 +414,42 @@ export default function TabelaEquipamentos() {
               onChange={(e) => setFormAdd(v => ({ ...v, numeroSerie: e.target.value }))}
             />
 
-            <TextField
-              label="Modelo Equipamento ID"
-              type="number"
-              fullWidth size="small" margin="dense"
-              value={formAdd.modeloEquipamentoId}
-              onChange={(e) => setFormAdd(v => ({ ...v, modeloEquipamentoId: e.target.value }))}
-              helperText="ID do modelo (ex.: 2)"
-            />
+            {/* SELECT: Categoria (usando tipo_equipamento, conforme pedido) */}
+            <FormControl fullWidth margin="dense" size="small">
+              <InputLabel id="lbl-categoria">Tipo de Equipamento</InputLabel>
+              <Select
+                labelId="lbl-categoria"
+                label="Tipo de Equipamento"
+                value={formAdd.categoriaId || ''}
+                onChange={(e) => {
+                  const idTipo = e.target.value;
+                  setFormAdd(v => ({ ...v, categoriaId: idTipo, modeloEquipamentoId: '' }));
+                }}
+                disabled={loadingTipos}
+              >
+                {tipos.map((t) => (
+                  <MenuItem key={t.id} value={t.id}>{t.nome}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-            <TextField
-              label="Categoria ID"
-              type="number"
-              fullWidth size="small" margin="dense"
-              value={formAdd.categoriaId}
-              onChange={(e) => setFormAdd(v => ({ ...v, categoriaId: e.target.value }))}
-              helperText="ID da categoria (ex.: 2)"
-            />
+            {/* SELECT: Modelo (filtra por tipo escolhido acima) */}
+            <FormControl fullWidth margin="dense" size="small">
+              <InputLabel id="lbl-modelo">Modelo do Equipamento</InputLabel>
+              <Select
+                labelId="lbl-modelo"
+                label="Modelo do Equipamento"
+                value={formAdd.modeloEquipamentoId || ''}
+                onChange={(e) => setFormAdd(v => ({ ...v, modeloEquipamentoId: e.target.value }))}
+                disabled={!formAdd.categoriaId || loadingModelos}
+              >
+                {modelos.map((m) => (
+                  <MenuItem key={m.id} value={m.id}>
+                    {m.marca} {m.modelo}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
             <TextField
               label="Data de Compra"
