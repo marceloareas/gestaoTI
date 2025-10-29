@@ -33,6 +33,14 @@ const StyledTableRow = styled(TableRow)(({ theme }) => ({
   '&:last-child td, &:last-child th': { border: 0 },
 }));
 
+const cargoMap = {
+  1: 'Desenvolvedor Sênior',
+  2: 'Desenvolvedor Pleno',
+  3: 'Desenvolvedor Júnior',
+  4: 'Analista de Suporte',
+  5: 'Estagiário',
+};
+
 export default function TabelaFunc() {
   const [data, setData] = useState([]);
 
@@ -87,14 +95,13 @@ export default function TabelaFunc() {
         {/* FIM DA BARRA DE PESQUISA */}
 
         <Table sx={{ minWidth: 900 }} aria-label="tabela de equipamentos">
-          <TableHead backgroundColor>
+          <TableHead>
             <TableRow>
               <StyledTableCell> Nome </StyledTableCell>
               <StyledTableCell> Número de Registro </StyledTableCell>
               <StyledTableCell> Cargo </StyledTableCell>
               <StyledTableCell> Email </StyledTableCell>
               <StyledTableCell> Telefone </StyledTableCell>
-              <StyledTableCell align="center"> Ativo </StyledTableCell>
             </TableRow>
           </TableHead>
 
@@ -103,10 +110,9 @@ export default function TabelaFunc() {
               <StyledTableRow key={func.id}>
                 <StyledTableCell>{func.nome}</StyledTableCell>
                 <StyledTableCell>{func.numeroRegistro}</StyledTableCell>
-                <StyledTableCell>{func.cargoId}</StyledTableCell>
+                <StyledTableCell>{cargoMap[func.cargoId] || "Cargo não definido"}</StyledTableCell>
                 <StyledTableCell>{func.email}</StyledTableCell>
                 <StyledTableCell>{func.telefone}</StyledTableCell>
-                <StyledTableCell>{ "Sim(Hardcode)" }</StyledTableCell>
               </StyledTableRow>
             ))}
 

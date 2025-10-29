@@ -87,7 +87,7 @@ export default function TabelaDescartados() {
         {/* FIM DA BARRA DE PESQUISA */}
 
         <Table sx={{ minWidth: 900 }} aria-label="tabela de equipamentos">
-          <TableHead backgroundColor>
+          <TableHead>
             <TableRow>
               <StyledTableCell>Identificador</StyledTableCell>
               <StyledTableCell> Marca </StyledTableCell>
