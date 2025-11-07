@@ -13,6 +13,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import InputAdornment from '@mui/material/InputAdornment';
 import { Modal, Box, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import Pagination from '@mui/material/Pagination';
+import { schemaAdd, schemaEdit } from '../schemas';
+import * as yup from "yup";
 
 import { api } from "@/services/api";
 
@@ -101,6 +103,11 @@ export default function TabelaEquipamentos() {
   const rowsPerPage = 5;
   const [searchTerm, setSearchTerm] = useState('');
 
+  //validação
+  const [errorsAdd, setErrorsAdd] = useState({});
+  const [errorsEdit, setErrorsEdit] = useState({});
+
+
   /* ===== carregar tabela ===== */
   useEffect(() => {
     api.get("/equipamentos")
@@ -152,38 +159,47 @@ export default function TabelaEquipamentos() {
   }, [openAdd, formAdd.categoriaId]);
 
   /* ===== ADD: submit ===== */
-  const handleSubmitAdd = async (e) => {
-    e.preventDefault();
+ const handleSubmitAdd = async (e) => {
+  e.preventDefault();
+  setErrorsAdd({}); // limpa erros anteriores
 
-    const payload = {
-      numeroSerie: String(formAdd.numeroSerie || '').trim(),
-      modeloEquipamentoId: formAdd.modeloEquipamentoId ? Number(formAdd.modeloEquipamentoId) : null,
-      categoriaId: formAdd.categoriaId ? Number(formAdd.categoriaId) : null, // aqui vai o id do TIPO (por pedido)
-      dataCompra: formAdd.dataCompra || null,
-      dataFimGarantia: formAdd.dataFimGarantia || null,
-      precoCompra: formAdd.precoCompra !== '' ? Number(formAdd.precoCompra) : null,
-      observacoes: formAdd.observacoes || null,
-    };
-
-    if (!payload.numeroSerie) return alert("Informe o número de série.");
-    if (!payload.categoriaId) return alert("Selecione o Tipo de Equipamento.");
-    if (!payload.modeloEquipamentoId) return alert("Selecione o Modelo do Equipamento.");
-
-    try {
-      setSavingAdd(true);
-      await api.post("/equipamentos", payload);
-
-      const r = await api.get("/equipamentos");
-      setData(r.data);
-
-      setOpenAdd(false);
-    } catch (e) {
-      console.error("Falha ao criar equipamento:", e);
-      alert("Não foi possível criar o equipamento.");
-    } finally {
-      setSavingAdd(false);
-    }
+  const payload = {
+    numeroSerie: String(formAdd.numeroSerie || '').trim(),
+    modeloEquipamentoId: formAdd.modeloEquipamentoId ? Number(formAdd.modeloEquipamentoId) : null,
+    categoriaId: formAdd.categoriaId ? Number(formAdd.categoriaId) : null,
+    dataCompra: formAdd.dataCompra || null,
+    dataFimGarantia: formAdd.dataFimGarantia || null,
+    precoCompra: formAdd.precoCompra !== '' ? Number(formAdd.precoCompra) : null,
+    observacoes: formAdd.observacoes || null,
   };
+
+  try {
+    await schemaAdd.validate(payload, { abortEarly: false });
+
+    setSavingAdd(true);
+    await api.post("/equipamentos", payload);
+
+    const r = await api.get("/equipamentos");
+    setData(r.data);
+    setOpenAdd(false);
+  } catch (err) {
+    if (err.name === "ValidationError") {
+      // monta dicionário campo->mensagem
+      const fieldErrors = {};
+      err.inner.forEach((e) => {
+        fieldErrors[e.path] = e.message;
+      });
+      setErrorsAdd(fieldErrors);
+      return; // não prossegue
+    }
+
+    console.error("Falha ao criar equipamento:", err);
+    alert("Não foi possível criar o equipamento.");
+  } finally {
+    setSavingAdd(false);
+  }
+};
+
 
   /* ===== EDIT: abrir modal, buscar detalhes e listas ===== */
   const handleDetalhes = async (eq) => {
@@ -264,81 +280,59 @@ export default function TabelaEquipamentos() {
   const handleCloseEdit = () => setOpenEdit(false);
 
   /* ===== EDIT: submit ===== */
-  const handleSubmitEdit = async (e) => {
-    e.preventDefault();
-    if (!selectedEq) return;
+ const handleSubmitEdit = async (e) => {
+  e.preventDefault();
+  if (!selectedEq) return;
+  setErrorsEdit({});
 
-    const payload = {
-      numeroSerie: (formEdit.numeroSerie || '').trim(),
-      modeloEquipamentoId: formEdit.modeloEquipamentoId ? Number(formEdit.modeloEquipamentoId) : null,
-      categoriaId: formEdit.categoriaId ? Number(formEdit.categoriaId) : null,
-      dataFimGarantia: formEdit.dataFimGarantia || null,
-      precoCompra: formEdit.precoCompra !== '' ? Number(formEdit.precoCompra) : null,
-      observacoes: formEdit.observacoes || null,
-    };
+  const payload = {
+    numeroSerie: (formEdit.numeroSerie || '').trim(),
+    modeloEquipamentoId: formEdit.modeloEquipamentoId ? Number(formEdit.modeloEquipamentoId) : null,
+    categoriaId: formEdit.categoriaId ? Number(formEdit.categoriaId) : null,
+    dataFimGarantia: formEdit.dataFimGarantia || null,
+    precoCompra: formEdit.precoCompra !== '' ? Number(formEdit.precoCompra) : null,
+    observacoes: formEdit.observacoes || null,
+  };
 
-    if (!payload.numeroSerie) return alert("Informe o número de série.");
-    if (!payload.categoriaId) return alert("Selecione o Tipo de Equipamento.");
-    if (!payload.modeloEquipamentoId) return alert("Selecione o Modelo do Equipamento.");
+  try {
+    await schemaEdit.validate(payload, { abortEarly: false });
 
-    try {
-      setSavingEdit(true);
-      await api.put(`/equipamentos/${selectedEq.id}`, payload);
+    setSavingEdit(true);
+    await api.put(`/equipamentos/${selectedEq.id}`, payload);
 
-      // atualiza em memória
-      setData((list) =>
-        list.map((it) =>
-          it.id === selectedEq.id
-            ? {
-                ...it,
-                numeroSerie: payload.numeroSerie,
-                dataFimGarantia: payload.dataFimGarantia ?? it.dataFimGarantia,
-                precoCompra: payload.precoCompra ?? it.precoCompra,
-                observacoes: payload.observacoes ?? it.observacoes,
-                // ajusta marca/modelo/categoria com base nas listas
-                marca: (modelos.find((m) => m.id === payload.modeloEquipamentoId)?.marca) ?? it.marca,
-                modelo: (modelos.find((m) => m.id === payload.modeloEquipamentoId)?.modelo) ?? it.modelo,
-                categoria: (tipos.find((t) => t.id === payload.categoriaId)?.nome) ?? it.categoria,
-              }
-            : it
-        )
-      );
+    setData((list) =>
+      list.map((it) =>
+        it.id === selectedEq.id
+          ? {
+              ...it,
+              ...payload,
+              marca: modelos.find((m) => m.id === payload.modeloEquipamentoId)?.marca ?? it.marca,
+              modelo: modelos.find((m) => m.id === payload.modeloEquipamentoId)?.modelo ?? it.modelo,
+              categoria: tipos.find((t) => t.id === payload.categoriaId)?.nome ?? it.categoria,
+            }
+          : it
+      )
+    );
 
-      setOpenEdit(false);
-    } catch (err) {
-      console.error("Falha ao atualizar equipamento:", err);
-      alert("Não foi possível salvar as alterações.");
-    } finally {
-      setSavingEdit(false);
+    setOpenEdit(false);
+  } catch (err) {
+    if (err.name === "ValidationError") {
+      const fieldErrors = {};
+      err.inner.forEach((e) => {
+        fieldErrors[e.path] = e.message;
+      });
+      setErrorsEdit(fieldErrors);
+      return;
     }
-  };
 
-  /* ===== excluir ===== */
-  const handleExcluir = (eq) => {
-    setEqToDelete(eq);
-    setOpenDelete(true);
-  };
+    console.error("Falha ao atualizar equipamento:", err);
+    alert("Não foi possível salvar as alterações.");
+  } finally {
+    setSavingEdit(false);
+  }
+};
 
-  const confirmDelete = async () => {
-    if (!eqToDelete) return;
-    try {
-      setDeleting(true);
-      await api.delete(`/equipamentos/${eqToDelete.id}`);
-      setData(list => list.filter(item => item.id !== eqToDelete.id));
-      setOpenDelete(false);
-      setEqToDelete(null);
-    } catch (e) {
-      console.error("Falha ao excluir equipamento:", e);
-      alert("Não foi possível excluir o equipamento.");
-    } finally {
-      setDeleting(false);
-    }
-  };
 
-  const cancelDelete = () => {
-    setOpenDelete(false);
-    setEqToDelete(null);
-  };
 
   /* ===== paginação ===== */
   const startIndex = (page - 1) * rowsPerPage;
@@ -386,7 +380,6 @@ export default function TabelaEquipamentos() {
         />
 
         <Table sx={{ minWidth: 900 }} aria-label="tabela de equipamentos">
-          {/* corrige o warning: não usar prop 'backgroundColor' direto */}
           <TableHead sx={{ backgroundColor: 'grey.900' }}>
             <TableRow>
               <StyledTableCell>Identificador</StyledTableCell>
@@ -484,6 +477,8 @@ export default function TabelaEquipamentos() {
               fullWidth size="small" margin="dense"
               value={formAdd.numeroSerie}
               onChange={(e) => setFormAdd(v => ({ ...v, numeroSerie: e.target.value }))}
+              error={!!errorsAdd.numeroSerie}
+              helperText={errorsAdd.numeroSerie}
             />
 
             <FormControl fullWidth margin="dense" size="small">
@@ -502,6 +497,9 @@ export default function TabelaEquipamentos() {
                   <MenuItem key={t.id} value={t.id}>{t.nome}</MenuItem>
                 ))}
               </Select>
+              {errorsAdd.categoriaId && (
+              <Typography variant="caption" color="error">{errorsAdd.categoriaId}</Typography>
+              )}
             </FormControl>
 
             <FormControl fullWidth margin="dense" size="small">
@@ -519,6 +517,9 @@ export default function TabelaEquipamentos() {
                   </MenuItem>
                 ))}
               </Select>
+              {errorsAdd.modeloEquipamentoId && (
+              <Typography variant="caption" color="error">{errorsAdd.modeloEquipamentoId}</Typography>
+              )}
             </FormControl>
 
             <TextField
@@ -528,6 +529,8 @@ export default function TabelaEquipamentos() {
               value={formAdd.dataCompra}
               onChange={(e) => setFormAdd(v => ({ ...v, dataCompra: e.target.value }))}
               InputLabelProps={{ shrink: true }}
+              error={!!errorsAdd.dataCompra}
+              helperText={errorsAdd.dataCompra}
             />
 
             <TextField
@@ -537,6 +540,8 @@ export default function TabelaEquipamentos() {
               value={formAdd.dataFimGarantia}
               onChange={(e) => setFormAdd(v => ({ ...v, dataFimGarantia: e.target.value }))}
               InputLabelProps={{ shrink: true }}
+              error={!!errorsAdd.dataFimGarantia}
+              helperText={errorsAdd.dataFimGarantia}
             />
 
             <TextField
@@ -545,6 +550,8 @@ export default function TabelaEquipamentos() {
               fullWidth size="small" margin="dense"
               value={formAdd.precoCompra}
               onChange={(e) => setFormAdd(v => ({ ...v, precoCompra: e.target.value }))}
+              error={!!errorsAdd.precoCompra}
+              helperText={errorsAdd.precoCompra}
             />
 
             <TextField
@@ -552,6 +559,8 @@ export default function TabelaEquipamentos() {
               fullWidth size="small" margin="dense" multiline minRows={2}
               value={formAdd.observacoes}
               onChange={(e) => setFormAdd(v => ({ ...v, observacoes: e.target.value }))}
+              error={!!errorsAdd.observacoes}
+              helperText={errorsAdd.observacoes}
             />
 
             <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mt: 2 }}>

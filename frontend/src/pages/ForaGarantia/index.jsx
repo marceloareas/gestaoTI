@@ -11,6 +11,7 @@ export default function ForaGarantia() {
         <StyledHome>
             <Header />
             <div className = 'tabela'>	
+                <h1 className = "title">Equipamentos fora da garantia</h1>
                 <TabelaForaGarantia></TabelaForaGarantia>
             </div>
             <Footer />

@@ -9,7 +9,8 @@ export default function Descartados() {
     return (
         <StyledHome>
             <Header />
-            <div className = 'tabela'>			
+            <div className = 'tabela'>		
+                <h1 className = "title">Equipamentos Descartados</h1>	
                 <TabelaDescartados></TabelaDescartados>
             </div>
 

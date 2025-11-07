@@ -9,7 +9,8 @@ export default function Inventario() {
     return (
         <StyledHome>
             <Header />
-            <div className = 'tabela'>			
+            <div className = 'tabela'>	
+                <h1 className = "title">Inventário</h1>
                 <Tabela></Tabela>
             </div>
 

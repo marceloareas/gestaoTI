@@ -9,7 +9,8 @@ export default function Funcionarios() {
 	return (
 		<StyledHome>
 			<Header />
-			<div className = 'tabela'>			
+			<div className = 'tabela'>		
+				<h1 className = "title">Funcionários</h1>	
 				<TabelaFunc></TabelaFunc>
 			</div>
 
