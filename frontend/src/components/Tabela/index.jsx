@@ -15,7 +15,8 @@ import { Modal, Box, Typography, FormControl, InputLabel, Select, MenuItem } fro
 import Pagination from '@mui/material/Pagination';
 import { schemaAdd, schemaEdit } from '../schemas';
 import * as yup from "yup";
-
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { api } from "@/services/api";
 
 /* ===== helpers de formatação (evitam RangeError quando valor é inválido) ===== */
@@ -112,7 +113,10 @@ export default function TabelaEquipamentos() {
   useEffect(() => {
     api.get("/equipamentos")
       .then((r) => setData(r.data))
-      .catch((e) => setErr(e?.message || "Erro ao buscar equipamentos"))
+      .catch((e) => {
+        setErr(e?.message || "Erro ao buscar equipamentos");
+        toast.error("❌ Falha ao carregar equipamentos!", { position: "top-right" });
+    })
       .finally(() => setLoading(false));
   }, []);
 
@@ -182,6 +186,7 @@ export default function TabelaEquipamentos() {
     const r = await api.get("/equipamentos");
     setData(r.data);
     setOpenAdd(false);
+    toast.success("✅ Equipamento adicionado com sucesso!", { position: "top-right" });
   } catch (err) {
     if (err.name === "ValidationError") {
       // monta dicionário campo->mensagem
@@ -190,11 +195,12 @@ export default function TabelaEquipamentos() {
         fieldErrors[e.path] = e.message;
       });
       setErrorsAdd(fieldErrors);
+      toast.warning("⚠️ Verifique os campos obrigatórios!", { position: "top-right" });
       return; // não prossegue
     }
 
     console.error("Falha ao criar equipamento:", err);
-    alert("Não foi possível criar o equipamento.");
+    toast.error("❌ Não foi possível criar o equipamento. O número de série já existe.");
   } finally {
     setSavingAdd(false);
   }
@@ -250,6 +256,7 @@ export default function TabelaEquipamentos() {
       }
 
       setOpenEdit(true);
+      
     } catch (e) {
       console.error('Erro ao abrir edição:', e);
       alert('Não foi possível carregar os dados para edição.');
@@ -315,6 +322,7 @@ export default function TabelaEquipamentos() {
     );
 
     setOpenEdit(false);
+    toast.success("✅ Equipamento atualizado com sucesso!", { position: "top-right" });
   } catch (err) {
     if (err.name === "ValidationError") {
       const fieldErrors = {};
@@ -322,11 +330,13 @@ export default function TabelaEquipamentos() {
         fieldErrors[e.path] = e.message;
       });
       setErrorsEdit(fieldErrors);
+      toast.warning("⚠️Selecione todos os campos!", { position: "top-right" });
       return;
     }
 
     console.error("Falha ao atualizar equipamento:", err);
-    alert("Não foi possível salvar as alterações.");
+    toast.error("❌ Não foi possível salvar as alterações.", { position: "top-right" });
+    //alert("Não foi possível salvar as alterações.");
   } finally {
     setSavingEdit(false);
   }
@@ -341,6 +351,7 @@ export default function TabelaEquipamentos() {
 
   return (
     <>
+    <ToastContainer position="top-right" autoClose={3000} />
       <TableContainer component={Paper}>
         <Button
           variant="outlined"
@@ -361,6 +372,7 @@ export default function TabelaEquipamentos() {
         >
           Adicionar equipamento
         </Button>
+        
 
         {/* busca */}
         <TextField
