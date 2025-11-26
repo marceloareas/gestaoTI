@@ -115,7 +115,7 @@ export default function TabelaEquipamentos() {
       .then((r) => setData(r.data))
       .catch((e) => {
         setErr(e?.message || "Erro ao buscar equipamentos");
-        toast.error("❌ Falha ao carregar equipamentos!", { position: "top-right" });
+        toast.error("Falha ao carregar equipamentos!", { position: "top-right" });
     })
       .finally(() => setLoading(false));
   }, []);
@@ -186,7 +186,7 @@ export default function TabelaEquipamentos() {
     const r = await api.get("/equipamentos");
     setData(r.data);
     setOpenAdd(false);
-    toast.success("✅ Equipamento adicionado com sucesso!", { position: "top-right" });
+    toast.success("Equipamento adicionado com sucesso!", { position: "top-right" });
   } catch (err) {
     if (err.name === "ValidationError") {
       // monta dicionário campo->mensagem
@@ -200,7 +200,7 @@ export default function TabelaEquipamentos() {
     }
 
     console.error("Falha ao criar equipamento:", err);
-    toast.error("❌ Não foi possível criar o equipamento. O número de série já existe.");
+    toast.error("Não foi possível criar o equipamento. O número de série já existe.");
   } finally {
     setSavingAdd(false);
   }
@@ -322,7 +322,7 @@ export default function TabelaEquipamentos() {
     );
 
     setOpenEdit(false);
-    toast.success("✅ Equipamento atualizado com sucesso!", { position: "top-right" });
+    toast.success("Equipamento atualizado com sucesso!", { position: "top-right" });
   } catch (err) {
     if (err.name === "ValidationError") {
       const fieldErrors = {};
@@ -330,12 +330,12 @@ export default function TabelaEquipamentos() {
         fieldErrors[e.path] = e.message;
       });
       setErrorsEdit(fieldErrors);
-      toast.warning("⚠️Selecione todos os campos!", { position: "top-right" });
+      toast.warning("Selecione todos os campos!", { position: "top-right" });
       return;
     }
 
     console.error("Falha ao atualizar equipamento:", err);
-    toast.error("❌ Não foi possível salvar as alterações.", { position: "top-right" });
+    toast.error("Não foi possível salvar as alterações.", { position: "top-right" });
     //alert("Não foi possível salvar as alterações.");
   } finally {
     setSavingEdit(false);
