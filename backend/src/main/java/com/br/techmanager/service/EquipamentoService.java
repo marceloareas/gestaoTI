@@ -1,29 +1,71 @@
 package com.br.techmanager.service;
 
 import com.br.techmanager.domain.equipamento.Equipamento;
+import com.br.techmanager.domain.historico.HistoricoStatus;
 import com.br.techmanager.dto.equipamento.*;
 import com.br.techmanager.exception.NotFoundException;
 import com.br.techmanager.repository.EquipamentoRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import com.br.techmanager.repository.StatusEquipamentoRepository;
+import com.br.techmanager.repository.HistoricoStatusRepository;
+import jakarta.transaction.Transactional;
 
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service @RequiredArgsConstructor
 public class EquipamentoService {
     private final EquipamentoRepository repo;
+    private final StatusEquipamentoRepository statusRepo;
+    private final HistoricoStatusRepository historicoRepo;
 
     public List<EquipamentoListItem> listarResumo() {
         return repo.listarResumo();
     }
 
+    @Transactional
     public EquipamentoResponse criar(EquipamentoRequest req) {
-        if (repo.existsByNumeroSerie(req.numeroSerie()))
-            throw new IllegalArgumentException("Número de série já existente");
+        // ... sua lógica existente de validação/construção do equipamento
+        var e = Equipamento.builder()
+                .numeroSerie(req.numeroSerie().trim())
+                .modeloEquipamentoId(req.modeloEquipamentoId())
+                .categoriaId(req.categoriaId())
+                .dataCompra(req.dataCompra())
+                .dataFimGarantia(req.dataFimGarantia())
+                .precoCompra(req.precoCompra())
+                .observacoes(req.observacoes())
+                .build();
 
-        Equipamento e = toEntity(req);
         e = repo.save(e);
-        return toResponse(e);
+
+        // REGISTRAR HISTÓRICO "Em estoque"
+        var statusEstoqueId = statusRepo.findByNome("Em estoque")
+                .map(s -> s.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Status 'Em estoque' não encontrado"));
+
+        historicoRepo.save(HistoricoStatus.builder()
+                .equipamentoId(e.getId())
+                .statusId(statusEstoqueId)
+                .dataAlteracao(LocalDateTime.now())
+                .observacoes("Entrada no estoque (criação do item)")
+                .build());
+
+        // ... montar e retornar seu DTO EquipamentoResponse (adaptar ao seu projeto)
+        return new EquipamentoResponse(
+                e.getId(),
+                e.getNumeroSerie(),
+                e.getModeloEquipamentoId(),
+                e.getCategoriaId(),
+                e.getDataCompra(),
+                e.getDataFimGarantia(),
+                e.getPrecoCompra(),
+                e.getObservacoes()
+        );
     }
 
     public EquipamentoResponse atualizar(Integer id, EquipamentoRequest req) {

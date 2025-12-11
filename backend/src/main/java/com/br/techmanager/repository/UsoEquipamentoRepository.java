@@ -9,6 +9,8 @@ import java.util.List;
 
 public interface UsoEquipamentoRepository extends JpaRepository<UsoEquipamento, Integer> {
 
+    
+    List<UsoEquipamento> findByFuncionarioIdOrderByDataRetiradaDesc(Integer funcionarioId);
     // Uma alocação ativa = data_devolucao IS NULL
     List<UsoEquipamento> findByEquipamentoIdAndDataDevolucaoIsNull(Integer equipamentoId);
 
