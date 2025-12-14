@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { styled } from '@mui/material/styles';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -14,21 +14,15 @@ import InputAdornment from '@mui/material/InputAdornment';
 import { Modal, Box, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import Pagination from '@mui/material/Pagination';
 import { schemaAdd, schemaEdit } from '../schemas';
-import * as yup from "yup";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { api } from "@/services/api";
 
-/* ===== helpers de formatação (evitam RangeError quando valor é inválido) ===== */
+/* ===== helpers de formatação ===== */
 const fmtDate = (v) => {
   if (!v) return '—';
   const d = new Date(v);
   return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('pt-BR');
-};
-const fmtDateTime = (v) => {
-  if (!v) return '—';
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? '—' : d.toLocaleString('pt-BR');
 };
 const fmtMoneyBRL = (v) =>
   Number(v ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -60,16 +54,28 @@ export default function TabelaEquipamentos() {
   // modais
   const [openAdd, setOpenAdd] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
-  const [openDelete, setOpenDelete] = useState(false);
 
   const [selectedEq, setSelectedEq] = useState(null);
-  const [eqToDelete, setEqToDelete] = useState(null);
+
+  // >>> NOVO: modal de ações (emprestar/devolver/retornar/descartar)
+  const [actionModal, setActionModal] = useState({
+    open: false,
+    type: null, // 'emprestar' | 'devolver' | 'retornar' | 'descartar'
+    eq: null,
+  });
+
+  // >>> NOVO: form do modal de ações
+  const [actionForm, setActionForm] = useState({
+    funcionarioRegistro: '',
+    data: '', // opcional (devolução/retorno)
+    observacoes: '',
+  });
 
   // formulários
   const [formAdd, setFormAdd] = useState({
     numeroSerie: '',
     modeloEquipamentoId: '',
-    categoriaId: '',     // aqui guardará o id do TIPO (por pedido)
+    categoriaId: '',
     dataCompra: '',
     dataFimGarantia: '',
     precoCompra: '',
@@ -83,31 +89,28 @@ export default function TabelaEquipamentos() {
     dataFimGarantia: '',
     precoCompra: '',
     observacoes: '',
-    // campos informativos (não enviados)
     marca: '',
     modelo: '',
   });
 
   // listas p/ selects
-  const [tipos, setTipos] = useState([]);     // tipo_equipamento
-  const [modelos, setModelos] = useState([]); // modelo_equipamento
+  const [tipos, setTipos] = useState([]);
+  const [modelos, setModelos] = useState([]);
   const [loadingTipos, setLoadingTipos] = useState(false);
   const [loadingModelos, setLoadingModelos] = useState(false);
 
   // ações
   const [savingEdit, setSavingEdit] = useState(false);
   const [savingAdd, setSavingAdd] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   // paginação & busca
   const [page, setPage] = useState(1);
   const rowsPerPage = 5;
   const [searchTerm, setSearchTerm] = useState('');
 
-  //validação
+  // validação
   const [errorsAdd, setErrorsAdd] = useState({});
   const [errorsEdit, setErrorsEdit] = useState({});
-
 
   /* ===== carregar tabela ===== */
   useEffect(() => {
@@ -116,15 +119,17 @@ export default function TabelaEquipamentos() {
       .catch((e) => {
         setErr(e?.message || "Erro ao buscar equipamentos");
         toast.error("Falha ao carregar equipamentos!", { position: "top-right" });
-    })
+      })
       .finally(() => setLoading(false));
   }, []);
 
   /* ===== filtragem ===== */
-  const equipamentosFiltrados = data.filter(eq =>
-    eq.status !== "Descartado" &&
-    (eq.numeroSerie ?? '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const equipamentosFiltrados = useMemo(() => (
+    data.filter(eq =>
+      eq.status !== "Descartado" &&
+      (eq.numeroSerie ?? '').toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  ), [data, searchTerm]);
 
   /* ===== selects do ADD ===== */
   useEffect(() => {
@@ -163,66 +168,60 @@ export default function TabelaEquipamentos() {
   }, [openAdd, formAdd.categoriaId]);
 
   /* ===== ADD: submit ===== */
- const handleSubmitAdd = async (e) => {
-  e.preventDefault();
-  setErrorsAdd({}); // limpa erros anteriores
+  const handleSubmitAdd = async (e) => {
+    e.preventDefault();
+    setErrorsAdd({});
 
-  const payload = {
-    numeroSerie: String(formAdd.numeroSerie || '').trim(),
-    modeloEquipamentoId: formAdd.modeloEquipamentoId ? Number(formAdd.modeloEquipamentoId) : null,
-    categoriaId: formAdd.categoriaId ? Number(formAdd.categoriaId) : null,
-    dataCompra: formAdd.dataCompra || null,
-    dataFimGarantia: formAdd.dataFimGarantia || null,
-    precoCompra: formAdd.precoCompra !== '' ? Number(formAdd.precoCompra) : null,
-    observacoes: formAdd.observacoes || null,
-  };
+    const payload = {
+      numeroSerie: String(formAdd.numeroSerie || '').trim(),
+      modeloEquipamentoId: formAdd.modeloEquipamentoId ? Number(formAdd.modeloEquipamentoId) : null,
+      categoriaId: formAdd.categoriaId ? Number(formAdd.categoriaId) : null,
+      dataCompra: formAdd.dataCompra || null,
+      dataFimGarantia: formAdd.dataFimGarantia || null,
+      precoCompra: formAdd.precoCompra !== '' ? Number(formAdd.precoCompra) : null,
+      observacoes: formAdd.observacoes || null,
+    };
 
-  try {
-    await schemaAdd.validate(payload, { abortEarly: false });
+    try {
+      await schemaAdd.validate(payload, { abortEarly: false });
 
-    setSavingAdd(true);
-    await api.post("/equipamentos", payload);
+      setSavingAdd(true);
+      await api.post("/equipamentos", payload);
 
-    const r = await api.get("/equipamentos");
-    setData(r.data);
-    setOpenAdd(false);
-    toast.success("Equipamento adicionado com sucesso!", { position: "top-right" });
-  } catch (err) {
-    if (err.name === "ValidationError") {
-      // monta dicionário campo->mensagem
-      const fieldErrors = {};
-      err.inner.forEach((e) => {
-        fieldErrors[e.path] = e.message;
-      });
-      setErrorsAdd(fieldErrors);
-      toast.warning("⚠️ Verifique os campos obrigatórios!", { position: "top-right" });
-      return; // não prossegue
+      const r = await api.get("/equipamentos");
+      setData(r.data);
+      setOpenAdd(false);
+      toast.success("Equipamento adicionado com sucesso!", { position: "top-right" });
+    } catch (err) {
+      if (err?.name === "ValidationError") {
+        const fieldErrors = {};
+        err.inner.forEach((e) => { fieldErrors[e.path] = e.message; });
+        setErrorsAdd(fieldErrors);
+        toast.warning("⚠️ Verifique os campos obrigatórios!", { position: "top-right" });
+        return;
+      }
+      console.error("Falha ao criar equipamento:", err);
+      toast.error("Não foi possível criar o equipamento. O número de série já existe.");
+    } finally {
+      setSavingAdd(false);
     }
-
-    console.error("Falha ao criar equipamento:", err);
-    toast.error("Não foi possível criar o equipamento. O número de série já existe.");
-  } finally {
-    setSavingAdd(false);
-  }
-};
-
+  };
 
   /* ===== EDIT: abrir modal, buscar detalhes e listas ===== */
   const handleDetalhes = async (eq) => {
     try {
       setSelectedEq(eq);
 
-      // tenta buscar detalhes pelo id (para obter categoriaId e modeloEquipamentoId)
       let det = null;
       try {
         const { data } = await api.get(`/equipamentos/${eq.id}`);
         det = data;
       } catch {
-        // se não existir endpoint, segue com o que temos na linha
+        // sem endpoint de detalhes: usa a linha
       }
 
       const numeroSerie = det?.numeroSerie ?? eq.numeroSerie ?? '';
-      const categoriaId = det?.categoriaId ?? '';            // id do tipo
+      const categoriaId = det?.categoriaId ?? '';
       const modeloEquipamentoId = det?.modeloEquipamentoId ?? '';
       const dataFimGarantia = det?.dataFimGarantia ?? eq.dataFimGarantia ?? '';
       const precoCompra = det?.precoCompra ?? eq.precoCompra ?? '';
@@ -239,13 +238,11 @@ export default function TabelaEquipamentos() {
         modelo: det?.modelo ?? eq.modelo ?? '',
       });
 
-      // carrega tipos
       setLoadingTipos(true);
       const { data: tiposData } = await api.get('/tipos-equipamento');
       setTipos(tiposData || []);
       setLoadingTipos(false);
 
-      // se já existir tipo, carrega modelos filtrados
       if (categoriaId) {
         setLoadingModelos(true);
         const { data: modelosData } = await api.get('/modelos-equipamento', { params: { tipoId: categoriaId } });
@@ -256,14 +253,12 @@ export default function TabelaEquipamentos() {
       }
 
       setOpenEdit(true);
-      
     } catch (e) {
       console.error('Erro ao abrir edição:', e);
       alert('Não foi possível carregar os dados para edição.');
     }
   };
 
-  // quando trocar tipo no EDIT, recarrega modelos
   useEffect(() => {
     if (!openEdit) return;
     const tipoId = formEdit.categoriaId;
@@ -287,62 +282,122 @@ export default function TabelaEquipamentos() {
   const handleCloseEdit = () => setOpenEdit(false);
 
   /* ===== EDIT: submit ===== */
- const handleSubmitEdit = async (e) => {
-  e.preventDefault();
-  if (!selectedEq) return;
-  setErrorsEdit({});
+  const handleSubmitEdit = async (e) => {
+    e.preventDefault();
+    if (!selectedEq) return;
+    setErrorsEdit({});
 
-  const payload = {
-    numeroSerie: (formEdit.numeroSerie || '').trim(),
-    modeloEquipamentoId: formEdit.modeloEquipamentoId ? Number(formEdit.modeloEquipamentoId) : null,
-    categoriaId: formEdit.categoriaId ? Number(formEdit.categoriaId) : null,
-    dataFimGarantia: formEdit.dataFimGarantia || null,
-    precoCompra: formEdit.precoCompra !== '' ? Number(formEdit.precoCompra) : null,
-    observacoes: formEdit.observacoes || null,
-  };
+    const payload = {
+      numeroSerie: (formEdit.numeroSerie || '').trim(),
+      modeloEquipamentoId: formEdit.modeloEquipamentoId ? Number(formEdit.modeloEquipamentoId) : null,
+      categoriaId: formEdit.categoriaId ? Number(formEdit.categoriaId) : null,
+      dataFimGarantia: formEdit.dataFimGarantia || null,
+      precoCompra: formEdit.precoCompra !== '' ? Number(formEdit.precoCompra) : null,
+      observacoes: formEdit.observacoes || null,
+    };
 
-  try {
-    await schemaEdit.validate(payload, { abortEarly: false });
+    try {
+      await schemaEdit.validate(payload, { abortEarly: false });
 
-    setSavingEdit(true);
-    await api.put(`/equipamentos/${selectedEq.id}`, payload);
+      setSavingEdit(true);
+      await api.put(`/equipamentos/${selectedEq.id}`, payload);
 
-    setData((list) =>
-      list.map((it) =>
-        it.id === selectedEq.id
-          ? {
+      setData((list) =>
+        list.map((it) =>
+          it.id === selectedEq.id
+            ? {
               ...it,
               ...payload,
               marca: modelos.find((m) => m.id === payload.modeloEquipamentoId)?.marca ?? it.marca,
               modelo: modelos.find((m) => m.id === payload.modeloEquipamentoId)?.modelo ?? it.modelo,
               categoria: tipos.find((t) => t.id === payload.categoriaId)?.nome ?? it.categoria,
             }
-          : it
-      )
-    );
+            : it
+        )
+      );
 
-    setOpenEdit(false);
-    toast.success("Equipamento atualizado com sucesso!", { position: "top-right" });
-  } catch (err) {
-    if (err.name === "ValidationError") {
-      const fieldErrors = {};
-      err.inner.forEach((e) => {
-        fieldErrors[e.path] = e.message;
+      setOpenEdit(false);
+      toast.success("Equipamento atualizado com sucesso!", { position: "top-right" });
+    } catch (err) {
+      if (err?.name === "ValidationError") {
+        const fieldErrors = {};
+        err.inner.forEach((e) => { fieldErrors[e.path] = e.message; });
+        setErrorsEdit(fieldErrors);
+        toast.warning("Selecione todos os campos!", { position: "top-right" });
+        return;
+      }
+      console.error("Falha ao atualizar equipamento:", err);
+      toast.error("Não foi possível salvar as alterações.", { position: "top-right" });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  /* ===== NOVO: abrir modal de ação ===== */
+  const openAction = (type, eq) => {
+    setActionForm({
+      funcionarioRegistro: '',
+      data: '',
+      observacoes: '',
+    });
+    setActionModal({ open: true, type, eq });
+  };
+
+  const closeAction = () => setActionModal({ open: false, type: null, eq: null });
+
+  const actionTitle = useMemo(() => {
+    switch (actionModal.type) {
+      case 'emprestar': return 'Emprestar equipamento';
+      case 'devolver': return 'Devolver equipamento';
+      case 'retornar': return 'Retornar de manutenção';
+      case 'descartar': return 'Descartar equipamento';
+      default: return 'Ação';
+    }
+  }, [actionModal.type]);
+
+  /* ===== NOVO: submit do modal de ação (TODO backend) ===== */
+  const handleSubmitAction = async (e) => {
+  e.preventDefault();
+  const eq = actionModal.eq;
+
+  try {
+    if (actionModal.type === 'emprestar') {
+      await api.post('/emprestimos', {
+        equipamentoId: eq.id,
+        funcionarioId: Number(actionForm.funcionarioRegistro),
+        tipoUso: 'emprestimo',
+        dataRetirada: new Date().toISOString().slice(0, 10),
+        observacoes: actionForm.observacoes,
       });
-      setErrorsEdit(fieldErrors);
-      toast.warning("Selecione todos os campos!", { position: "top-right" });
-      return;
     }
 
-    console.error("Falha ao atualizar equipamento:", err);
-    toast.error("Não foi possível salvar as alterações.", { position: "top-right" });
-    //alert("Não foi possível salvar as alterações.");
-  } finally {
-    setSavingEdit(false);
+    if (actionModal.type === 'devolver') {
+      await api.post(`/emprestimos/${eq.id}/devolver`, {
+        dataDevolucao: actionForm.data || null,
+        observacoes: actionForm.observacoes,
+      });
+    }
+
+    if (actionModal.type === 'retornar') {
+      await api.post(`/equipamentos/${eq.id}/retornar`);
+    }
+
+    if (actionModal.type === 'descartar') {
+      await api.post(`/equipamentos/${eq.id}/descartar`, {
+        observacoes: actionForm.observacoes,
+      });
+    }
+
+    const r = await api.get('/equipamentos');
+    setData(r.data);
+
+    toast.success("Ação realizada com sucesso!");
+    closeAction();
+
+  } catch (err) {
+    toast.error(err?.response?.data?.message || "Erro ao executar ação");
   }
 };
-
-
 
   /* ===== paginação ===== */
   const startIndex = (page - 1) * rowsPerPage;
@@ -351,7 +406,8 @@ export default function TabelaEquipamentos() {
 
   return (
     <>
-    <ToastContainer position="top-right" autoClose={3000} />
+      <ToastContainer position="top-right" autoClose={3000} />
+
       <TableContainer component={Paper}>
         <Button
           variant="outlined"
@@ -372,7 +428,6 @@ export default function TabelaEquipamentos() {
         >
           Adicionar equipamento
         </Button>
-        
 
         {/* busca */}
         <TextField
@@ -436,11 +491,48 @@ export default function TabelaEquipamentos() {
                   )}
                 </StyledTableCell>
 
+                {/* ✅ NOVO: ações condicionais por status */}
                 <StyledTableCell align="center">
-                  <ModeEditOutlineRoundedIcon
-                    onClick={() => handleDetalhes(eq)}
-                    style={{ cursor: 'pointer' }}
-                  />
+                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <ModeEditOutlineRoundedIcon
+                      onClick={() => handleDetalhes(eq)}
+                      style={{ cursor: 'pointer' }}
+                      titleAccess="Editar"
+                    />
+
+                    {eq.status === "Em uso" && (
+                      <>
+                        <Button size="small" variant="outlined" onClick={() => openAction('devolver', eq)}>
+                          Devolver
+                        </Button>
+                        <Button size="small" variant="outlined" color="warning" onClick={() => openAction('descartar', eq)}>
+                          Descartar
+                        </Button>
+                      </>
+                    )}
+
+                    {eq.status === "Em estoque" && (
+                      <>
+                        <Button size="small" variant="outlined" onClick={() => openAction('emprestar', eq)}>
+                          Emprestar
+                        </Button>
+                        <Button size="small" variant="outlined" color="warning" onClick={() => openAction('descartar', eq)}>
+                          Descartar
+                        </Button>
+                      </>
+                    )}
+
+                    {eq.status === "Em manutenção" && (
+                      <>
+                        <Button size="small" variant="outlined" onClick={() => openAction('retornar', eq)}>
+                          Retornar
+                        </Button>
+                        <Button size="small" variant="outlined" color="warning" onClick={() => openAction('descartar', eq)}>
+                          Descartar
+                        </Button>
+                      </>
+                    )}
+                  </Box>
                 </StyledTableCell>
               </StyledTableRow>
             ))}
@@ -510,7 +602,7 @@ export default function TabelaEquipamentos() {
                 ))}
               </Select>
               {errorsAdd.categoriaId && (
-              <Typography variant="caption" color="error">{errorsAdd.categoriaId}</Typography>
+                <Typography variant="caption" color="error">{errorsAdd.categoriaId}</Typography>
               )}
             </FormControl>
 
@@ -530,7 +622,7 @@ export default function TabelaEquipamentos() {
                 ))}
               </Select>
               {errorsAdd.modeloEquipamentoId && (
-              <Typography variant="caption" color="error">{errorsAdd.modeloEquipamentoId}</Typography>
+                <Typography variant="caption" color="error">{errorsAdd.modeloEquipamentoId}</Typography>
               )}
             </FormControl>
 
@@ -611,7 +703,6 @@ export default function TabelaEquipamentos() {
               onChange={(e) => setFormEdit(v => ({ ...v, numeroSerie: e.target.value }))}
             />
 
-            {/* SELECT: Tipo (usa formEdit.categoriaId) */}
             <FormControl fullWidth margin="dense" size="small">
               <InputLabel id="lbl-categoria-edit">Tipo de Equipamento</InputLabel>
               <Select
@@ -620,7 +711,6 @@ export default function TabelaEquipamentos() {
                 value={formEdit.categoriaId || ''}
                 onChange={(e) => {
                   const idTipo = e.target.value;
-                  // ao mudar o tipo, zera o modelo para obrigar nova seleção
                   setFormEdit(v => ({ ...v, categoriaId: idTipo, modeloEquipamentoId: '' }));
                 }}
                 disabled={loadingTipos}
@@ -631,7 +721,6 @@ export default function TabelaEquipamentos() {
               </Select>
             </FormControl>
 
-            {/* SELECT: Modelo (filtra por tipo escolhido) */}
             <FormControl fullWidth margin="dense" size="small">
               <InputLabel id="lbl-modelo-edit">Modelo do Equipamento</InputLabel>
               <Select
@@ -677,6 +766,89 @@ export default function TabelaEquipamentos() {
               <Button onClick={handleCloseEdit}>Cancelar</Button>
               <Button type="submit" variant="contained" disabled={savingEdit}>
                 {savingEdit ? "Salvando..." : "Salvar"}
+              </Button>
+            </Box>
+          </form>
+        </Box>
+      </Modal>
+
+      {/* ✅ NOVO: MODAL DE AÇÃO (emprestar/devolver/retornar/descartar) */}
+      <Modal
+        open={actionModal.open}
+        onClose={closeAction}
+        aria-labelledby="modal-action"
+        slotProps={{
+          backdrop: { sx: { backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' } }
+        }}
+      >
+        <Box sx={{
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          bgcolor: '#fff', p: 3, borderRadius: 2, boxShadow: 24, width: 520
+        }}>
+          <Typography id="modal-action" variant="h6" gutterBottom>
+            {actionTitle}
+          </Typography>
+
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Equipamento: <strong>{actionModal.eq?.numeroSerie}</strong>
+          </Typography>
+
+          <form onSubmit={handleSubmitAction}>
+            {actionModal.type === 'emprestar' && (
+              <>
+                <TextField
+                  label="Número de registro do funcionário"
+                  fullWidth size="small" margin="dense"
+                  value={actionForm.funcionarioRegistro}
+                  onChange={(e) => setActionForm(v => ({ ...v, funcionarioRegistro: e.target.value }))}
+                />
+                <TextField
+                  label="Observações"
+                  fullWidth size="small" margin="dense" multiline minRows={2}
+                  value={actionForm.observacoes}
+                  onChange={(e) => setActionForm(v => ({ ...v, observacoes: e.target.value }))}
+                />
+              </>
+            )}
+
+            {(actionModal.type === 'devolver' || actionModal.type === 'retornar') && (
+              <>
+                <TextField
+                  label="Data (opcional)"
+                  type="date"
+                  fullWidth size="small" margin="dense"
+                  value={actionForm.data}
+                  onChange={(e) => setActionForm(v => ({ ...v, data: e.target.value }))}
+                  InputLabelProps={{ shrink: true }}
+                />
+                <TextField
+                  label="Observações"
+                  fullWidth size="small" margin="dense" multiline minRows={2}
+                  value={actionForm.observacoes}
+                  onChange={(e) => setActionForm(v => ({ ...v, observacoes: e.target.value }))}
+                />
+              </>
+            )}
+
+            {actionModal.type === 'descartar' && (
+              <>
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  Tem certeza que deseja descartar este equipamento?
+                </Typography>
+                <TextField
+                  label="Motivo / Observações"
+                  fullWidth size="small" margin="dense" multiline minRows={2}
+                  value={actionForm.observacoes}
+                  onChange={(e) => setActionForm(v => ({ ...v, observacoes: e.target.value }))}
+                />
+              </>
+            )}
+
+            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mt: 2 }}>
+              <Button onClick={closeAction}>Cancelar</Button>
+              <Button type="submit" variant="contained" color={actionModal.type === 'descartar' ? 'warning' : 'primary'}>
+                Confirmar
               </Button>
             </Box>
           </form>
