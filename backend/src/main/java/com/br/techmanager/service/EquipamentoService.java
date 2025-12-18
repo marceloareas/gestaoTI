@@ -68,6 +68,23 @@ public class EquipamentoService {
         );
     }
 
+    @Transactional
+    public void descartar(Integer id) {
+        Equipamento e = repo.findById(id).orElseThrow(() -> new NotFoundException("Equipamento não encontrado"));
+
+        // REGISTRAR HISTÓRICO "Descartado"
+        var statusDescartadoId = statusRepo.findByNome("Descartado")
+                .map(s -> s.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Status 'Descartado' não encontrado"));
+
+        historicoRepo.save(HistoricoStatus.builder()
+                .equipamentoId(e.getId())
+                .statusId(statusDescartadoId)
+                .dataAlteracao(LocalDateTime.now())
+                .observacoes("Equipamento descartado")
+                .build());
+    }
+
     public EquipamentoResponse atualizar(Integer id, EquipamentoRequest req) {
         Equipamento e = repo.findById(id).orElseThrow(() -> new NotFoundException("Equipamento não encontrado"));
         e.setNumeroSerie(req.numeroSerie());

@@ -32,9 +32,9 @@ public class EquipamentoController {
         return service.atualizar(id, req);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> remover(@PathVariable Integer id) {
-        service.remover(id);
+    @PostMapping("/{id}/descartar")
+    public ResponseEntity<Void> descartar(@PathVariable Integer id) {
+        service.descartar(id);
         return ResponseEntity.noContent().build();
     }
 }
