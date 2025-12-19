@@ -154,4 +154,24 @@ public class EquipamentoService {
                 .observacoes("Equipamento em manutenção")
                 .build());
     }
+
+    @Transactional
+        public void restaurar(Integer id) {
+                Equipamento e = repo.findById(id)
+                                .orElseThrow(() -> new NotFoundException("Equipamento não encontrado"));
+
+                // REGISTRAR HISTÓRICO "Em estoque"
+                var statusEstoqueId = statusRepo.findByNome("Em estoque")
+                                .map(s -> s.getId())
+                                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                                                "Status 'Em estoque' não encontrado"));
+
+                historicoRepo.save(HistoricoStatus.builder()
+                                .equipamentoId(e.getId())
+                                .statusId(statusEstoqueId)
+                                .dataAlteracao(LocalDateTime.now())
+                                .observacoes("Descarte cancelado - Restaurado ao estoque")
+                                .build());
+        }
+
 }

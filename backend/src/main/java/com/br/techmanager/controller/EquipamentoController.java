@@ -48,4 +48,9 @@ public class EquipamentoController {
         service.iniciarManutencao(id);
         return ResponseEntity.noContent().build();
     }
+    @PostMapping("/{id}/restaurar-descarte")
+    public ResponseEntity<Void> restaurarDescarte(@PathVariable Integer id) {
+        service.restaurar(id);
+        return ResponseEntity.noContent().build();
+    }
 }

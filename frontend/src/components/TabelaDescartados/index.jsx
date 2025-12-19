@@ -7,16 +7,13 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-import { Button, TextField } from '@mui/material';
+import { Button, TextField, Box } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import InputAdornment from '@mui/material/InputAdornment';
-import { Box } from '@mui/material';
 import Pagination from '@mui/material/Pagination';
-
 
 import { api } from "@/services/api";
 
-// ... (StyledTableCell, StyledTableRow) - Mantidos
 const StyledTableCell = styled(TableCell)(({ theme }) => ({
   [`&.${tableCellClasses.head}`]: {
     backgroundColor: theme.palette.grey[900],
@@ -35,28 +32,33 @@ const StyledTableRow = styled(TableRow)(({ theme }) => ({
 
 export default function TabelaDescartados() {
   const [data, setData] = useState([]);
-
-  // estados auxiliares
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
 
   const [page, setPage] = useState(1);
   const rowsPerPage = 5;
 
-
-  useEffect(() => {
-    api.get("/equipamentos")
-      .then((r) => setData(r.data))
-      .catch((e) => setErr(e?.message || "Erro ao buscar equipamentos"))
-      .finally(() => setLoading(false));
-  }, []);
-
-  // busca
   const [searchTerm, setSearchTerm] = useState('');
 
-  // filtragem
+  const fetchEquip = async () => {
+    setLoading(true);
+    setErr(null);
+    try {
+      const r = await api.get("/equipamentos");
+      setData(r.data);
+    } catch (e) {
+      setErr(e?.message || "Erro ao buscar equipamentos");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEquip();
+  }, []);
+
   const equipamentosFiltrados = data.filter(eq =>
-    eq.status == "Descartado" &&
+    eq.status === "Descartado" &&
     (eq.numeroSerie ?? '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -64,17 +66,27 @@ export default function TabelaDescartados() {
   const endIndex = startIndex + rowsPerPage;
   const equipamentosPaginados = equipamentosFiltrados.slice(startIndex, endIndex);
 
+  const handleRestaurar = async (eq) => {
+    const ok = window.confirm("Deseja restaurar este equipamento para o estoque?");
+    if (!ok) return;
+
+    try {
+      await api.post(`/equipamentos/${eq.id}/restaurar-descarte`);
+      await fetchEquip(); // atualiza tabela
+    } catch (e) {
+      alert(e?.message || "Erro ao restaurar equipamento");
+    }
+  };
 
   return (
     <>
       <TableContainer component={Paper}>
-        {/* BARRA DE PESQUISA */}
         <TextField
           label="Buscar por Identificador"
           variant="outlined"
           size="small"
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
           sx={{ margin: 2, width: 300 }}
           InputProps={{
             startAdornment: (
@@ -84,20 +96,20 @@ export default function TabelaDescartados() {
             ),
           }}
         />
-        {/* FIM DA BARRA DE PESQUISA */}
 
         <Table sx={{ minWidth: 900 }} aria-label="tabela de equipamentos">
           <TableHead>
             <TableRow>
               <StyledTableCell>Identificador</StyledTableCell>
-              <StyledTableCell> Marca </StyledTableCell>
-              <StyledTableCell> Modelo </StyledTableCell>
-              <StyledTableCell> Categoria </StyledTableCell>
+              <StyledTableCell>Marca</StyledTableCell>
+              <StyledTableCell>Modelo</StyledTableCell>
+              <StyledTableCell>Categoria</StyledTableCell>
               <StyledTableCell>Fim da Garantia</StyledTableCell>
               <StyledTableCell align="right">Preço de Compra</StyledTableCell>
               <StyledTableCell>Observações</StyledTableCell>
               <StyledTableCell>Data de Descarte</StyledTableCell>
               <StyledTableCell align="center">Status</StyledTableCell>
+              <StyledTableCell align="center">Ações</StyledTableCell>
             </TableRow>
           </TableHead>
 
@@ -108,37 +120,45 @@ export default function TabelaDescartados() {
                 <StyledTableCell>{eq.marca}</StyledTableCell>
                 <StyledTableCell>{eq.modelo}</StyledTableCell>
                 <StyledTableCell>{eq.categoria}</StyledTableCell>
-                <StyledTableCell>{new Date(eq.dataFimGarantia).toLocaleDateString('pt-BR')}</StyledTableCell>
+                <StyledTableCell>
+                  {eq.dataFimGarantia ? new Date(eq.dataFimGarantia).toLocaleDateString('pt-BR') : '-'}
+                </StyledTableCell>
                 <StyledTableCell align="right">
                   {Number(eq.precoCompra ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </StyledTableCell>
                 <StyledTableCell>{eq.observacoes}</StyledTableCell>
-                <StyledTableCell>{new Date(eq.dataCompra).toLocaleString('pt-BR')}</StyledTableCell>
+                <StyledTableCell>
+                  {eq.dataCompra ? new Date(eq.dataCompra).toLocaleDateString('pt-BR') : '-'}
+                </StyledTableCell>
 
                 <StyledTableCell align="center">
-                  {eq.status === "Em estoque" ? (
-                    <Button variant="contained" color="success" size="small"
-                      sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 'fit-content', height: 30, pointerEvents: 'none' }}>
-                      Em Estoque
-                    </Button>
-                  ) : eq.status === "Em uso" ? (
-                    <Button variant="contained" color="error" size="small"
-                      sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 'fit-content', height: 30, pointerEvents: 'none' }}>
-                      Em Uso
-                    </Button>
-                  ) : (
-                    <Button variant="contained" color="warning" size="small"
-                      sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 0, height: 30, pointerEvents: 'none' }}>
-                      {eq.status || 'Outro Status'}
-                    </Button>
-                  )}
+                  <Button
+                    variant="contained"
+                    color="warning"
+                    size="small"
+                    sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 0, height: 30, pointerEvents: 'none' }}
+                  >
+                    {eq.status}
+                  </Button>
+                </StyledTableCell>
+
+                <StyledTableCell align="center">
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="success"
+                    sx={{ py: 0.2, minHeight: 30, fontSize: '0.75rem' }}
+                    onClick={() => handleRestaurar(eq)}
+                  >
+                    Restaurar
+                  </Button>
                 </StyledTableCell>
               </StyledTableRow>
             ))}
 
             {equipamentosFiltrados.length === 0 && (
               <StyledTableRow>
-                <StyledTableCell colSpan={9} align="center">
+                <StyledTableCell colSpan={10} align="center">
                   Nenhum equipamento encontrado com o identificador "{searchTerm}".
                 </StyledTableCell>
               </StyledTableRow>
@@ -155,6 +175,9 @@ export default function TabelaDescartados() {
           color="primary"
         />
       </Box>
+
+      {loading && <Box sx={{ textAlign: 'center', my: 2 }}>Carregando...</Box>}
+      {err && <Box sx={{ textAlign: 'center', my: 2, color: 'red' }}>{err}</Box>}
     </>
   );
 }
