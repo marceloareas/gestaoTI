@@ -17,7 +17,8 @@ public interface EquipamentoRepository extends JpaRepository<Equipamento, Intege
       e.numero_serie                    AS numeroSerie,
       me.marca                          AS marca,
       me.modelo                         AS modelo,
-      te.nome                           AS categoria,
+      cat.codigo                        AS categoria,
+      te.nome                           AS tipo,
       e.data_compra                     AS dataCompra,
       e.data_fim_garantia               AS dataFimGarantia,
       e.preco_compra                    AS precoCompra,
@@ -26,6 +27,7 @@ public interface EquipamentoRepository extends JpaRepository<Equipamento, Intege
       COALESCE(sa.status_atual, 'Em estoque') AS status
     FROM techmanager.equipamento e
     LEFT JOIN techmanager.modelo_equipamento me ON me.id = e.modelo_equipamento_id
+    LEFT JOIN techmanager.categoria_uso cat on cat.id = e.categoria_id
     LEFT JOIN techmanager.tipo_equipamento te    ON te.id = me.tipo_equipamento_id
     LEFT JOIN techmanager.status_atual_equipamento sa ON sa.equipamento_id = e.id
     ORDER BY e.id
