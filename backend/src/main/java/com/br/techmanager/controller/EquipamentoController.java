@@ -43,4 +43,9 @@ public class EquipamentoController {
         service.retornar(id);
         return ResponseEntity.noContent().build();
     }
+    @PostMapping("/{id}/manutencao")
+    public ResponseEntity<Void> iniciarManutencao(@PathVariable Integer id) {
+        service.iniciarManutencao(id);
+        return ResponseEntity.noContent().build();
+    }
 }

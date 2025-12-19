@@ -40,4 +40,6 @@ public class UsoEquipamentoController {
     public UsoEquipamentoResponse devolver(@PathVariable Integer id){
         return service.devolver(id);
     }
+
+   
 }

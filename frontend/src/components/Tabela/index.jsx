@@ -44,6 +44,27 @@ const StyledTableRow = styled(TableRow)(({ theme }) => ({
   '&:last-child td, &:last-child th': { border: 0 },
 }));
 
+/* ===== CSS dos botões da coluna ações ===== */
+const actionWrapSx = {
+  display: 'flex',
+  gap: 0.8,
+  justifyContent: 'center',
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  py: 0.5,
+};
+
+const actionBtnSx = {
+  height: 30,
+  minHeight: 30,
+  padding: '0 10px',
+  fontSize: '0.72rem',
+  borderRadius: 1.5,
+  textTransform: 'none',
+  lineHeight: 1,
+  minWidth: 90,
+};
+
 export default function TabelaEquipamentos() {
   const [data, setData] = useState([]);
 
@@ -57,17 +78,17 @@ export default function TabelaEquipamentos() {
 
   const [selectedEq, setSelectedEq] = useState(null);
 
-  // >>> NOVO: modal de ações (emprestar/devolver/retornar/descartar)
+  // modal de ações
   const [actionModal, setActionModal] = useState({
     open: false,
-    type: null, // 'emprestar' | 'devolver' | 'retornar' | 'descartar'
+    type: null, // 'emprestar' | 'devolver' | 'retornar' | 'descartar' | 'manutencao'
     eq: null,
   });
 
-  // >>> NOVO: form do modal de ações
+  // form do modal de ações
   const [actionForm, setActionForm] = useState({
     funcionarioRegistro: '',
-    data: '', // opcional (devolução/retorno)
+    data: '',
     observacoes: '',
   });
 
@@ -217,7 +238,7 @@ export default function TabelaEquipamentos() {
         const { data } = await api.get(`/equipamentos/${eq.id}`);
         det = data;
       } catch {
-        // sem endpoint de detalhes: usa a linha
+        // sem endpoint de detalhes
       }
 
       const numeroSerie = det?.numeroSerie ?? eq.numeroSerie ?? '';
@@ -333,7 +354,7 @@ export default function TabelaEquipamentos() {
     }
   };
 
-  /* ===== NOVO: abrir modal de ação ===== */
+  /* ===== abrir modal de ação ===== */
   const openAction = (type, eq) => {
     setActionForm({
       funcionarioRegistro: '',
@@ -350,54 +371,64 @@ export default function TabelaEquipamentos() {
       case 'emprestar': return 'Emprestar equipamento';
       case 'devolver': return 'Devolver equipamento';
       case 'retornar': return 'Retornar de manutenção';
+      case 'manutencao': return 'Enviar para manutenção';
       case 'descartar': return 'Descartar equipamento';
       default: return 'Ação';
     }
   }, [actionModal.type]);
 
-  /* ===== NOVO: submit do modal de ação (TODO backend) ===== */
+  /* ===== submit do modal de ação ===== */
   const handleSubmitAction = async (e) => {
-  e.preventDefault();
-  const eq = actionModal.eq;
+    e.preventDefault();
+    const eq = actionModal.eq;
+    if (!eq) return;
 
-  try {
-    if (actionModal.type === 'emprestar') {
-      await api.post('/emprestimos', {
-        equipamentoId: eq.id,
-        funcionarioId: Number(actionForm.funcionarioRegistro),
-        tipoUso: 'emprestimo',
-        dataRetirada: new Date().toISOString().slice(0, 10),
-        observacoes: actionForm.observacoes,
-      });
+    try {
+      if (actionModal.type === 'emprestar') {
+        await api.post('/emprestimos', {
+          equipamentoId: eq.id,
+          funcionarioId: Number(actionForm.funcionarioRegistro),
+          tipoUso: 'emprestimo',
+          dataRetirada: new Date().toISOString().slice(0, 10),
+          observacoes: actionForm.observacoes || null,
+        });
+      }
+
+      if (actionModal.type === 'devolver') {
+        await api.post(`/equipamentos/${eq.id}/devolver`, {
+          dataDevolucao: actionForm.data || null,
+          observacoes: actionForm.observacoes || null,
+        });
+      }
+
+      if (actionModal.type === 'retornar') {
+        await api.post(`/equipamentos/${eq.id}/retornar`, {
+          data: actionForm.data || null,
+          observacoes: actionForm.observacoes || null,
+        });
+      }
+
+      if (actionModal.type === 'manutencao') {
+        await api.post(`/equipamentos/${eq.id}/manutencao`, {
+          observacoes: actionForm.observacoes || null,
+        });
+      }
+
+      if (actionModal.type === 'descartar') {
+        await api.post(`/equipamentos/${eq.id}/descartar`, {
+          observacoes: actionForm.observacoes || null,
+        });
+      }
+
+      const r = await api.get('/equipamentos');
+      setData(r.data);
+
+      toast.success("Ação realizada com sucesso!");
+      closeAction();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Erro ao executar ação");
     }
-
-    if (actionModal.type === 'devolver') {
-      await api.post(`/equipamentos/${eq.id}/retornar`, {
-        dataDevolucao: actionForm.data || null,
-        observacoes: actionForm.observacoes,
-      });
-    }
-
-    if (actionModal.type === 'retornar') {
-      await api.post(`/equipamentos/${eq.id}/retornar`);
-    }
-
-    if (actionModal.type === 'descartar') {
-      await api.post(`/equipamentos/${eq.id}/descartar`, {
-        observacoes: actionForm.observacoes,
-      });
-    }
-
-    const r = await api.get('/equipamentos');
-    setData(r.data);
-
-    toast.success("Ação realizada com sucesso!");
-    closeAction();
-
-  } catch (err) {
-    toast.error(err?.response?.data?.message || "Erro ao executar ação");
-  }
-};
+  };
 
   /* ===== paginação ===== */
   const startIndex = (page - 1) * rowsPerPage;
@@ -429,7 +460,6 @@ export default function TabelaEquipamentos() {
           Adicionar equipamento
         </Button>
 
-        {/* busca */}
         <TextField
           label="Buscar por Identificador"
           variant="outlined"
@@ -462,80 +492,151 @@ export default function TabelaEquipamentos() {
           </TableHead>
 
           <TableBody>
-            {equipamentosPaginados.map((eq) => (
-              <StyledTableRow key={eq.id}>
-                <StyledTableCell>{eq.numeroSerie}</StyledTableCell>
-                <StyledTableCell>{eq.marca}</StyledTableCell>
-                <StyledTableCell>{eq.modelo}</StyledTableCell>
-                <StyledTableCell>{eq.categoria}</StyledTableCell>
-                <StyledTableCell>{fmtDate(eq.dataFimGarantia)}</StyledTableCell>
-                <StyledTableCell align="right">{fmtMoneyBRL(eq.precoCompra)}</StyledTableCell>
-                <StyledTableCell>{eq.observacoes}</StyledTableCell>
+            {equipamentosPaginados.map((eq) => {
+              const podeMandarManutencao = eq.status !== "Em manutenção" && eq.status !== "Descartado";
 
-                <StyledTableCell align="center">
-                  {eq.status === "Em estoque" ? (
-                    <Button variant="contained" color="success" size="small"
-                      sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 'fit-content', height: 30, pointerEvents: 'none' }}>
-                      Em Estoque
-                    </Button>
-                  ) : eq.status === "Em uso" ? (
-                    <Button variant="contained" color="error" size="small"
-                      sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 'fit-content', height: 30, pointerEvents: 'none' }}>
-                      Em Uso
-                    </Button>
-                  ) : (
-                    <Button variant="contained" color="warning" size="small"
-                      sx={{ padding: '2px 6px', fontSize: '0.65rem', minWidth: 0, height: 30, pointerEvents: 'none' }}>
-                      {eq.status || 'Outro Status'}
-                    </Button>
-                  )}
-                </StyledTableCell>
+              return (
+                <StyledTableRow key={eq.id}>
+                  <StyledTableCell>{eq.numeroSerie}</StyledTableCell>
+                  <StyledTableCell>{eq.marca}</StyledTableCell>
+                  <StyledTableCell>{eq.modelo}</StyledTableCell>
+                  <StyledTableCell>{eq.categoria}</StyledTableCell>
+                  <StyledTableCell>{fmtDate(eq.dataFimGarantia)}</StyledTableCell>
+                  <StyledTableCell align="right">{fmtMoneyBRL(eq.precoCompra)}</StyledTableCell>
+                  <StyledTableCell>{eq.observacoes}</StyledTableCell>
 
-                {/* ✅ NOVO: ações condicionais por status */}
-                <StyledTableCell align="center">
-                  <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <ModeEditOutlineRoundedIcon
-                      onClick={() => handleDetalhes(eq)}
-                      style={{ cursor: 'pointer' }}
-                      titleAccess="Editar"
-                    />
-
-                    {eq.status === "Em uso" && (
-                      <>
-                        <Button size="small" variant="outlined" onClick={() => openAction('devolver', eq)}>
-                          Devolver
-                        </Button>
-                        <Button size="small" variant="outlined" color="warning" onClick={() => openAction('descartar', eq)}>
-                          Descartar
-                        </Button>
-                      </>
+                  <StyledTableCell align="center">
+                    {eq.status === "Em estoque" ? (
+                      <Button
+                        variant="contained"
+                        color="success"
+                        size="small"
+                        sx={{ ...actionBtnSx, pointerEvents: 'none', minWidth: 110 }}
+                      >
+                        Em Estoque
+                      </Button>
+                    ) : eq.status === "Em uso" ? (
+                      <Button
+                        variant="contained"
+                        color="error"
+                        size="small"
+                        sx={{ ...actionBtnSx, pointerEvents: 'none', minWidth: 110 }}
+                      >
+                        Em Uso
+                      </Button>
+                    ) : eq.status === "Em manutenção" ? (
+                      <Button
+                        variant="contained"
+                        color="warning"
+                        size="small"
+                        sx={{ ...actionBtnSx, pointerEvents: 'none', minWidth: 110 }}
+                      >
+                        Em Manutenção
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="contained"
+                        color="warning"
+                        size="small"
+                        sx={{ ...actionBtnSx, pointerEvents: 'none', minWidth: 110 }}
+                      >
+                        {eq.status || 'Outro Status'}
+                      </Button>
                     )}
+                  </StyledTableCell>
 
-                    {eq.status === "Em estoque" && (
-                      <>
-                        <Button size="small" variant="outlined" onClick={() => openAction('emprestar', eq)}>
-                          Emprestar
-                        </Button>
-                        <Button size="small" variant="outlined" color="warning" onClick={() => openAction('descartar', eq)}>
-                          Descartar
-                        </Button>
-                      </>
-                    )}
+                  <StyledTableCell align="center">
+                    <Box sx={actionWrapSx}>
+                      <ModeEditOutlineRoundedIcon
+                        onClick={() => handleDetalhes(eq)}
+                        style={{ cursor: 'pointer' }}
+                        titleAccess="Editar"
+                      />
 
-                    {eq.status === "Em manutenção" && (
-                      <>
-                        <Button size="small" variant="outlined" onClick={() => openAction('retornar', eq)}>
-                          Retornar
+                      {/* Botão: Manutenção (para todos, exceto quem já está em manutenção) */}
+                      {podeMandarManutencao && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="info"
+                          sx={actionBtnSx}
+                          onClick={() => openAction('manutencao', eq)}
+                        >
+                          Manutenção
                         </Button>
-                        <Button size="small" variant="outlined" color="warning" onClick={() => openAction('descartar', eq)}>
-                          Descartar
-                        </Button>
-                      </>
-                    )}
-                  </Box>
-                </StyledTableCell>
-              </StyledTableRow>
-            ))}
+                      )}
+
+                      {/* Ações por status */}
+                      {eq.status === "Em uso" && (
+                        <>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            sx={actionBtnSx}
+                            onClick={() => openAction('devolver', eq)}
+                          >
+                            Devolver
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="warning"
+                            sx={actionBtnSx}
+                            onClick={() => openAction('descartar', eq)}
+                          >
+                            Descartar
+                          </Button>
+                        </>
+                      )}
+
+                      {eq.status === "Em estoque" && (
+                        <>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            sx={actionBtnSx}
+                            onClick={() => openAction('emprestar', eq)}
+                          >
+                            Emprestar
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="warning"
+                            sx={actionBtnSx}
+                            onClick={() => openAction('descartar', eq)}
+                          >
+                            Descartar
+                          </Button>
+                        </>
+                      )}
+
+                      {eq.status === "Em manutenção" && (
+                        <>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            sx={actionBtnSx}
+                            onClick={() => openAction('retornar', eq)}
+                          >
+                            Retornar
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="warning"
+                            sx={actionBtnSx}
+                            onClick={() => openAction('descartar', eq)}
+                          >
+                            Descartar
+                          </Button>
+                        </>
+                      )}
+                    </Box>
+                  </StyledTableCell>
+                </StyledTableRow>
+              );
+            })}
 
             {equipamentosFiltrados.length === 0 && (
               <StyledTableRow>
@@ -772,7 +873,7 @@ export default function TabelaEquipamentos() {
         </Box>
       </Modal>
 
-      {/* ✅ NOVO: MODAL DE AÇÃO (emprestar/devolver/retornar/descartar) */}
+      {/* MODAL DE AÇÃO */}
       <Modal
         open={actionModal.open}
         onClose={closeAction}
@@ -798,7 +899,7 @@ export default function TabelaEquipamentos() {
             {actionModal.type === 'emprestar' && (
               <>
                 <TextField
-                  label="Número de registro do funcionário"
+                  label="ID do funcionário (por enquanto)"
                   fullWidth size="small" margin="dense"
                   value={actionForm.funcionarioRegistro}
                   onChange={(e) => setActionForm(v => ({ ...v, funcionarioRegistro: e.target.value }))}
@@ -831,6 +932,20 @@ export default function TabelaEquipamentos() {
               </>
             )}
 
+            {(actionModal.type === 'manutencao') && (
+              <>
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  Isso moverá o equipamento para <strong>Em manutenção</strong>.
+                </Typography>
+                <TextField
+                  label="Motivo / Observações (opcional)"
+                  fullWidth size="small" margin="dense" multiline minRows={2}
+                  value={actionForm.observacoes}
+                  onChange={(e) => setActionForm(v => ({ ...v, observacoes: e.target.value }))}
+                />
+              </>
+            )}
+
             {actionModal.type === 'descartar' && (
               <>
                 <Typography variant="body2" sx={{ mb: 1 }}>
@@ -847,7 +962,11 @@ export default function TabelaEquipamentos() {
 
             <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mt: 2 }}>
               <Button onClick={closeAction}>Cancelar</Button>
-              <Button type="submit" variant="contained" color={actionModal.type === 'descartar' ? 'warning' : 'primary'}>
+              <Button
+                type="submit"
+                variant="contained"
+                color={actionModal.type === 'descartar' ? 'warning' : 'primary'}
+              >
                 Confirmar
               </Button>
             </Box>

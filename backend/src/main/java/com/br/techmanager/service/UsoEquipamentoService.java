@@ -56,4 +56,5 @@ public class UsoEquipamentoService {
                 u.getDataRetirada(), u.getDataDevolucao(), u.getDataLimite(), u.getObservacoes()
         );
     }
+
 }
