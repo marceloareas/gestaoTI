@@ -21,7 +21,7 @@ public class EmprestimoController {
         return ResponseEntity.created(URI.create("/api/emprestimos/" + resp.id())).body(resp);
     }
 
-    @PutMapping("/{id}/devolver")
+    @PostMapping("/{id}/devolver")
     public EmprestimoResponse devolver(@PathVariable Integer id, @Valid @RequestBody DevolucaoRequest r){
         return service.devolver(id, r);
     }

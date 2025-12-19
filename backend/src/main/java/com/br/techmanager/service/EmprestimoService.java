@@ -84,7 +84,7 @@ public class EmprestimoService {
                 uso.getId(),
                 uso.getFuncionarioId(),
                 uso.getEquipamentoId(),
-                r.tipo().trim().toLowerCase(),
+                uso.getTipoUsoId(),
                 uso.getDataRetirada(),
                 uso.getDataLimite(),
                 uso.getDataDevolucao(),
@@ -95,45 +95,39 @@ public class EmprestimoService {
     @Transactional
     public EmprestimoResponse devolver(Integer id, DevolucaoRequest r) {
         var uso = usoRepo.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Uso/Empréstimo não encontrado"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Empréstimo não encontrado"));
 
         if (uso.getDataDevolucao() != null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este empréstimo já foi devolvido");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Empréstimo já foi devolvido");
         }
 
-        var dataDev = r.dataDevolucao();
-        if (dataDev.isBefore(uso.getDataRetirada())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "dataDevolucao não pode ser anterior à dataRetirada");
-        }
+        uso.setDataDevolucao((r.dataDevolucao() != null) ? r.dataDevolucao() : LocalDate.now());
+        uso.setObservacoes(r.observacoes());
 
-        uso.setDataDevolucao(dataDev);
-        if (r.observacoes() != null && !r.observacoes().isBlank()) {
-            var obs = uso.getObservacoes();
-            uso.setObservacoes((obs == null || obs.isBlank()) ? r.observacoes() : (obs + " | " + r.observacoes()));
-        }
         uso = usoRepo.save(uso);
 
-        // Histórico: ao devolver, item volta a "Em estoque"
-        var statusEstoqueId = findStatusIdByNomeOrThrow("Em estoque");
+        // Histórico: ao devolver, item volta para "Em estoque"
+        var statusEmEstoqueId = findStatusIdByNomeOrThrow("Em estoque");
         historicoRepo.save(HistoricoStatus.builder()
                 .equipamentoId(uso.getEquipamentoId())
-                .statusId(statusEstoqueId)
+                .statusId(statusEmEstoqueId)
                 .dataAlteracao(LocalDateTime.now())
-                .observacoes("Devolvido do uso ID " + uso.getId())
+                .observacoes("Devolvido pelo funcionário ID " + uso.getFuncionarioId())
                 .build());
 
-        // descobrir o "tipo" textual pelo id (se quiser enriquecer a resposta)
-        var tipo = tipoUsoRepo.findById(uso.getTipoUsoId()).map(t -> t.getCodigo()).orElse("?");
+        var tipoUsoCodigo = tipoUsoRepo.findById(uso.getTipoUsoId())
+                .map(t -> t.getCodigo())
+                .orElse("desconhecido");
 
         return new EmprestimoResponse(
                 uso.getId(),
                 uso.getFuncionarioId(),
                 uso.getEquipamentoId(),
-                tipo,
+                uso.getTipoUsoId(),
                 uso.getDataRetirada(),
                 uso.getDataLimite(),
                 uso.getDataDevolucao(),
-                uso.getObservacoes());
+                uso.getObservacoes()
+        );
     }
 }

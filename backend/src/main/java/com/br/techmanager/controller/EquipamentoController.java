@@ -37,4 +37,10 @@ public class EquipamentoController {
         service.descartar(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{id}/retornar")
+    public ResponseEntity<Void> retornar(@PathVariable Integer id) {
+        service.retornar(id);
+        return ResponseEntity.noContent().build();
+    }
 }

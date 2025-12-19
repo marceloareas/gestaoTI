@@ -6,7 +6,7 @@ public record EmprestimoResponse(
     Integer id,
     Integer funcionarioId,
     Integer equipamentoId,
-    String tipo,          
+    Integer tipo,          
     LocalDate dataRetirada,
     LocalDate dataLimite,
     LocalDate dataDevolucao,

@@ -372,7 +372,7 @@ export default function TabelaEquipamentos() {
     }
 
     if (actionModal.type === 'devolver') {
-      await api.post(`/emprestimos/${eq.id}/devolver`, {
+      await api.post(`/equipamentos/${eq.id}/retornar`, {
         dataDevolucao: actionForm.data || null,
         observacoes: actionForm.observacoes,
       });
