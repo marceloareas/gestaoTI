@@ -1,0 +1,56 @@
+package com.br.techmanager.controller;
+
+import com.br.techmanager.dto.equipamento.*;
+import com.br.techmanager.service.EquipamentoService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import java.net.URI;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/equipamentos")
+@RequiredArgsConstructor
+public class EquipamentoController {
+    private final EquipamentoService service;
+
+    @GetMapping
+    public List<EquipamentoListItem> listarResumo() {
+        return service.listarResumo();
+    }
+
+
+    @PostMapping
+    public ResponseEntity<EquipamentoResponse> criar(@Valid @RequestBody EquipamentoRequest req) {
+        var resp = service.criar(req);
+        return ResponseEntity.created(URI.create("/api/equipamentos/" + resp.id())).body(resp);
+    }
+
+    @PutMapping("/{id}")
+    public EquipamentoResponse atualizar(@PathVariable Integer id, @Valid @RequestBody EquipamentoRequest req) {
+        return service.atualizar(id, req);
+    }
+
+    @PostMapping("/{id}/descartar")
+    public ResponseEntity<Void> descartar(@PathVariable Integer id) {
+        service.descartar(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/retornar")
+    public ResponseEntity<Void> retornar(@PathVariable Integer id) {
+        service.retornar(id);
+        return ResponseEntity.noContent().build();
+    }
+    @PostMapping("/{id}/manutencao")
+    public ResponseEntity<Void> iniciarManutencao(@PathVariable Integer id) {
+        service.iniciarManutencao(id);
+        return ResponseEntity.noContent().build();
+    }
+    @PostMapping("/{id}/restaurar-descarte")
+    public ResponseEntity<Void> restaurarDescarte(@PathVariable Integer id) {
+        service.restaurar(id);
+        return ResponseEntity.noContent().build();
+    }
+}
