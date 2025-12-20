@@ -418,7 +418,7 @@ useEffect(() => {
       }
 
       if (actionModal.type === 'devolver') {
-        await api.post(`/equipamentos/${eq.id}/devolver`, {
+        await api.post(`/equipamentos/${eq.id}/retornar`, {
           dataDevolucao: actionForm.data || null,
           observacoes: actionForm.observacoes || null,
         });
